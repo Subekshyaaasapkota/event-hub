@@ -276,65 +276,41 @@ const TRUST_BADGES = [
 
 const FAQItem = ({ q, a, index }) => {
   const [open, setOpen] = useState(false);
+  const panelId = `faq-panel-${index}`;
+
   return (
-  <div
-  style={{ animationDelay: `${index * 60}ms` }}
-  className="faq-item border-b border-slate-100 last:border-0"
-  >
+  <div className="reveal border-b border-hairline last:border-0" style={{ "--reveal-delay": `${Math.min(index, 6) * 40}ms` }}>
+  <h3>
   <button
-  className="w-full flex items-start justify-between py-5 text-left gap-6 group"
+  type="button"
+  aria-expanded={open}
+  aria-controls={panelId}
   onClick={() => setOpen(!open)}
+  className="group flex w-full cursor-pointer items-start justify-between gap-6 py-5 text-left"
   >
   <span
-  className={`font-semibold text-[15px] leading-snug transition-colors ${open ? "text-indigo-600" : "text-slate-800 group-hover:text-indigo-600"}`}
+  className={`font-semibold leading-snug transition-colors duration-200 ${open ? "text-ink" : "text-ink group-hover:text-ink-soft"}`}
   >
   {q}
   </span>
   <span
-  className={`shrink-0 mt-0.5 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300 ${open ? "bg-indigo-600 rotate-180" : "bg-slate-100 group-hover:bg-slate-200"}`}
+  className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors duration-300 ${open ? "bg-ink text-paper" : "bg-stone-100 text-stone-500 group-hover:bg-stone-200"}`}
   >
   <ChevronDown
   size={14}
-  className={open ? "text-white" : "text-slate-500"}
+  className={`transition-transform duration-300 ease-out ${open ? "rotate-180" : ""}`}
   />
   </span>
   </button>
+  </h3>
+  {/* grid-rows animates to auto height, so a long answer is never clipped */}
   <div
-  className={`overflow-hidden transition-all duration-300 ease-in-out ${open ? "max-h-60 opacity-100" : "max-h-0 opacity-0"}`}
+  id={panelId}
+  className={`grid transition-all duration-300 ease-out ${open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
   >
-  <p className="text-sm text-slate-500 leading-relaxed pb-5 pr-12">{a}</p>
+  <div className="overflow-hidden">
+  <p className="max-w-[68ch] pb-5 pr-12 text-sm leading-relaxed text-stone-600">{a}</p>
   </div>
-  </div>
-  );
-};
-
-const TermsItem = ({ section, index }) => {
-  const [open, setOpen] = useState(index < 3);
-
-  return (
-  <div
-  className="terms-item bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
-  style={{ animationDelay: `${index * 50}ms` }}
-  >
-  <button
-  className="w-full flex items-center gap-4 px-6 py-4 text-left group"
-  onClick={() => setOpen(!open)}
-  >
-  <div className="shrink-0 w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center">
-  <span className="text-white text-xs font-black">{String(index + 1).padStart(2, "0")}</span>
-  </div>
-  <span className="flex-1 font-bold text-slate-800 text-sm group-hover:text-indigo-700 transition-colors">
-  {section.title}
-  </span>
-  <ChevronDown
-  size={15}
-  className={`shrink-0 text-slate-400 transition-transform duration-250 ${open ? "rotate-180" : ""}`}
-  />
-  </button>
-  <div className={`overflow-hidden transition-all duration-300 ease-in-out ${open ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}>
-  <p className="text-sm text-slate-600 leading-relaxed px-6 pb-5 pt-1 border-t border-slate-50">
-  {section.body}
-  </p>
   </div>
   </div>
   );
@@ -369,6 +345,14 @@ export default function SupportCenter() {
 
   const displayFAQ = search ? filteredFAQ : FAQ_DATA;
 
+  // Drives both the "N questions match" line and the empty state.
+  const resultCount = displayFAQ.reduce((sum, g) => sum + g.items.length, 0);
+
+  // The contents sidebar is built from the unfiltered list, so searching left
+  // links pointing at headings that were no longer on the page.
+  const contentsList =
+    activeTab === "faq" ? displayFAQ : activeTab === "terms" ? TERMS_SECTIONS : PRIVACY_SECTIONS;
+
   const TABS = [
   { id: "faq", label: "FAQ", icon: HelpCircle, path: "/faq" },
   { id: "terms", label: "Terms & Conditions", icon: Scale, path: "/terms-and-conditions" },
@@ -377,52 +361,42 @@ export default function SupportCenter() {
 
   return (
   <>
-  <style>{`
-  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500&display=swap');
-  .support-root { font-family: 'DM Sans', sans-serif; background: #ffffff; min-height: 100vh; }
-  h1, h2, h3, .brand, .sora { font-family: 'Sora', sans-serif; }
-  .faq-item, .terms-item, .section-card { animation: fadeUp 0.4s ease both; }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-  .sticky-sidebar { position: sticky; top: 100px; height: fit-content; }
-  .legal-content h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 1rem; color: #1e293b; }
-  .legal-content p { color: #475569; line-height: 1.7; margin-bottom: 1.5rem; }
-  .contents-sidebar { background: #f8f9fa; border-radius: 24px; padding: 32px; border: 1px solid #eef2f6; }
-  .sidebar-link { display: block; text-align: left; font-size: 14px; font-weight: 500; color: #64748b; transition: all 0.2s; padding: 4px 0; }
-  .sidebar-link:hover { color: #4f46e5; transform: translateX(4px); }
-  `}</style>
-
   <div className="support-root">
   {/* Dark Hero Section */}
-  <div className="bg-[#0f172a] pt-24 pb-20 px-6 relative overflow-hidden">
-  <div className="max-w-6xl mx-auto relative z-10">
-  {/* Breadcrumbs */}
-  <div className="flex items-center gap-2 text-xs font-medium mb-8">
-  <Link to="/" className="text-indigo-400 hover:text-indigo-300">Home</Link>
-  <span className="text-slate-600">â€º</span>
-  <span className="text-slate-400 capitalize">
+  <div className="relative overflow-hidden border-b border-hairline bg-paper pt-24 pb-12 lg:pt-32">
+  <div className="mx-auto max-w-6xl px-6">
+
+  <div className="reveal mb-8 flex items-center gap-2 text-sm font-medium text-stone-500">
+  <Link to="/" className="transition-colors duration-200 hover:text-ink">Home</Link>
+  <span aria-hidden="true" className="text-stone-400">&rsaquo;</span>
+  <span className="text-ink">
   {activeTab === "faq" ? "FAQ" : activeTab === "terms" ? "Terms & Conditions" : "Privacy Policy"}
   </span>
   </div>
 
-  <h1 className="text-5xl md:text-6xl font-extrabold text-white mb-6 tracking-tight sora">
+  <h1
+  className="reveal font-display text-3xl font-semibold leading-tight tracking-tight text-ink md:text-4xl"
+  style={{ "--reveal-delay": "60ms" }}
+  >
   {activeTab === "faq" ? "Frequently Asked Questions" : activeTab === "terms" ? "Terms & Conditions" : "Privacy Policy"}
   </h1>
 
-  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-  <p className="text-slate-400 text-sm max-w-xl leading-relaxed">
-  Last updated: January 24, 2026 - We are committed to protecting your privacy and handling your data responsibly. Our policies are designed to be transparent and easy to understand.
+  <div className="reveal mt-6 flex flex-col justify-between gap-6 md:flex-row md:items-end" style={{ "--reveal-delay": "120ms" }}>
+  <p className="max-w-xl text-sm leading-relaxed text-stone-600">
+  {activeTab === "faq"
+  ? "Straight answers about registering, hosting and attending. Search below, or jump to a topic."
+  : "Written to be read. If anything here is unclear, the support team will explain it in plain language."}
   </p>
 
-  {/* Tab Switcher in Hero */}
-  <div className="flex bg-slate-800/50 p-1 rounded-xl border border-slate-700/50 h-fit">
+  <div className="flex h-fit w-fit rounded-full border border-hairline bg-white p-1">
   {TABS.map((tab) => (
   <Link
   key={tab.id}
   to={tab.path}
-  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === tab.id
-  ? "bg-indigo-600 text-white shadow-lg"
-  : "text-slate-400 hover:text-white"
-  }`}
+  aria-current={activeTab === tab.id ? "page" : undefined}
+  className={`rounded-full px-4 py-2 text-xs font-semibold transition-colors duration-200 ${activeTab === tab.id
+  ? "bg-ink text-paper"
+  : "text-stone-600 hover:bg-stone-100 hover:text-ink"}`}
   >
   {tab.label}
   </Link>
@@ -430,106 +404,125 @@ export default function SupportCenter() {
   </div>
   </div>
   </div>
-  {/* Subtle decoration */}
-  <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-indigo-500/5 to-transparent" />
   </div>
 
-  <div className="max-w-6xl mx-auto px-6 py-16">
+  <div className="mx-auto max-w-6xl px-6 py-14 lg:py-20">
   <div className="flex flex-col md:flex-row gap-12">
 
   {/* Sidebar Navigation */}
-  <aside className="md:w-72 shrink-0">
-  <div className="sticky-sidebar contents-sidebar">
-  <h3 className="text-slate-900 font-extrabold text-lg mb-8 sora">Contents</h3>
-  <nav className="space-y-5">
-  {activeTab === "faq" ? (
-  FAQ_DATA.map((group, i) => (
-  <button
-  key={i}
-  onClick={() => {
-  const el = document.getElementById(`cat-${group.category}`);
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }}
-  className="sidebar-link"
-  >
-  {i + 1}. {group.category}
-  </button>
-  ))
-  ) : activeTab === "terms" ? (
-  TERMS_SECTIONS.map((section, i) => (
-  <button
-  key={i}
-  onClick={() => {
-  const el = document.getElementById(`terms-${i}`);
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }}
-  className="sidebar-link leading-snug"
-  >
-  {i + 1}. {section.title}
-  </button>
-  ))
+  <aside className="md:w-72 md:shrink-0">
+  <div className="sticky top-24 rounded-2xl border border-hairline bg-white p-7">
+  <h2 className="mb-6 font-display text-sm font-semibold uppercase tracking-wide text-stone-500">Contents</h2>
+  <nav className="space-y-1">
+  {/* One list, one handler. These were three near-identical branches that had
+      to be edited together, and the FAQ one kept pointing at headings that a
+      search had filtered out. */}
+  {contentsList.length === 0 ? (
+  <p className="text-sm leading-relaxed text-stone-600">
+  No sections to list for this search.
+  </p>
   ) : (
-  PRIVACY_SECTIONS.map((section, i) => (
+  <ol className="space-y-1">
+  {contentsList.map((entry, i) => {
+  const prefix = activeTab === "faq" ? "cat-" : activeTab === "terms" ? "terms-" : "privacy-";
+  const id = activeTab === "faq" ? `cat-${entry.category}` : `${prefix}${i}`;
+  const label = activeTab === "faq" ? entry.category : entry.title;
+  return (
+  <li key={id}>
   <button
-  key={i}
+  type="button"
   onClick={() => {
-  const el = document.getElementById(`privacy-${i}`);
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Without this the focus stays on the button, so the next Tab continues down
+  // the sidebar instead of entering the section the reader just jumped to.
+  el.setAttribute("tabindex", "-1");
+  el.focus({ preventScroll: true });
+  el.addEventListener("blur", () => el.removeAttribute("tabindex"), { once: true });
   }}
-  className="sidebar-link"
+  className="flex w-full cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-snug text-stone-600 transition-colors duration-200 hover:bg-stone-50 hover:text-ink"
   >
-  {i + 1}. {section.title}
+  <span aria-hidden="true" className="tabular-nums text-stone-400">{i + 1}.</span>
+  <span>{label}</span>
   </button>
-  ))
+  </li>
+  );
+  })}
+  </ol>
   )}
   </nav>
   </div>
   </aside>
 
   {/* Main Content Area */}
-  <main className="flex-1">
+  <main className="min-w-0 flex-1">
 
   {/* FAQ CONTENT */}
   {activeTab === "faq" && (
   <div className="space-y-12">
   <div className="relative mb-8">
-  <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+  <Search size={18} aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" />
   <input
   type="text"
-  placeholder="Search questions..."
+  aria-label="Search frequently asked questions" placeholder="Search questions..."
   value={search}
   onChange={(e) => setSearch(e.target.value)}
-  className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 border border-slate-100"
+  className="w-full rounded-2xl border border-hairline bg-white py-3.5 pl-12 pr-4 text-sm text-ink placeholder-stone-400 transition-colors duration-200 focus:border-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-300"
   />
   </div>
 
+  <p className="mb-3 text-sm text-stone-600" role="status">
+  {search
+  ? `${resultCount} ${resultCount === 1 ? "question matches" : "questions match"} "${search}"`
+  : `${resultCount} questions across ${FAQ_DATA.length} topics`}
+  </p>
+
   {displayFAQ.map((group) => (
-  <section key={group.category} id={`cat-${group.category}`} className="scroll-mt-32">
-  <h2 className="text-2xl font-extrabold text-slate-900 mb-6 sora border-b border-slate-100 pb-4">
+  <section key={group.category} id={`cat-${group.category}`} className="reveal scroll-mt-28">
+  <h2 className="reveal mb-5 border-b border-hairline pb-4 font-display text-xl font-semibold text-ink">
   {group.category}
   </h2>
-  <div className="space-y-2">
+  <div className="space-y-1">
   {group.items.map((item, i) => (
   <FAQItem key={i} index={i} {...item} />
   ))}
   </div>
   </section>
   ))}
+
+  {/* Previously a search with no matches rendered a blank page below the input */}
+  {search && resultCount === 0 && (
+  <div className="rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-12 text-center">
+  <p className="mb-2 font-display text-lg font-semibold text-ink">Nothing matches that search</p>
+  <p className="mx-auto mb-6 max-w-sm text-sm leading-relaxed text-stone-600">
+  Try a shorter word, or clear the search to see all {FAQ_DATA.length} topics.
+  </p>
+  <button
+  type="button"
+  onClick={() => setSearch("")}
+  className="press cursor-pointer rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-paper transition-colors duration-200 hover:bg-stone-800"
+  >
+  Clear search
+  </button>
+  </div>
+  )}
   </div>
   )}
 
   {/* TERMS CONTENT */}
   {activeTab === "terms" && (
   <div className="legal-content">
-  <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 mb-10">
-  <p className="text-sm text-indigo-900 font-semibold mb-0 italic">
-  Summary: These terms outline your rights and responsibilities when using EventHub. We focus on accuracy, student eligibility, and professional conduct for organizers.
+  <div className="mb-12 rounded-2xl border border-hairline bg-stone-50 p-6">
+  <p className="mb-2 font-display text-xs font-semibold uppercase tracking-wide text-ink-soft">In short</p>
+  <p className="mb-0 text-sm font-medium leading-relaxed text-stone-700">
+  These terms outline your rights and responsibilities when using EventHub. We focus on accuracy, student eligibility, and professional conduct for organizers.
   </p>
   </div>
   {TERMS_SECTIONS.map((section, i) => (
-  <section key={i} id={`terms-${i}`} className="scroll-mt-32 mb-12">
-  <h2 className="sora">{i + 1}. {section.title}</h2>
-  <p>{section.body}</p>
+  <section key={i} id={`terms-${i}`} className="reveal mb-12 scroll-mt-28">
+  <h2 className="mb-3 font-display text-lg font-semibold text-ink">{i + 1}. {section.title}</h2>
+  <p className="mb-0 max-w-[68ch] leading-relaxed text-stone-600">{section.body}</p>
   </section>
   ))}
   </div>
@@ -538,19 +531,35 @@ export default function SupportCenter() {
   {/* PRIVACY CONTENT */}
   {activeTab === "privacy" && (
   <div className="legal-content">
-  <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 mb-10">
-  <p className="text-sm text-emerald-900 font-semibold mb-0 italic">
-  Summary: EventHub collects only the information necessary to provide our services. We never sell your personal data. You have full control over your information and can request its deletion at any time.
+<div className="mb-12 rounded-2xl border border-hairline bg-stone-50 p-6">
+  <p className="mb-2 font-display text-xs font-semibold uppercase tracking-wide text-ink-soft">In short</p>
+  <p className="mb-0 text-sm font-medium leading-relaxed text-stone-700">
+  EventHub collects only the information necessary to provide our services. We never sell your personal data. You have full control over your information and can request its deletion at any time.
   </p>
   </div>
+
+
+  {/* TRUST_BADGES was declared in this file but never rendered anywhere */}
+    <ul className="mb-14 grid gap-3 sm:grid-cols-2">
+    {TRUST_BADGES.map((badge, i) => (
+    <li
+    key={badge}
+    className="reveal flex items-center gap-3 rounded-2xl border border-hairline bg-white px-4 py-3.5 text-sm font-medium text-ink"
+    style={{ "--reveal-delay": `${i * 60}ms` }}
+    >
+    <CheckCircle size={16} className="shrink-0 text-ink-soft" aria-hidden="true" />
+    {badge}
+    </li>
+    ))}
+    </ul>
   {PRIVACY_SECTIONS.map((section, i) => (
-  <section key={i} id={`privacy-${i}`} className="scroll-mt-32 mb-16">
-  <h2 className="sora">{i + 1}. {section.title}</h2>
+  <section key={i} id={`privacy-${i}`} className="reveal mb-16 scroll-mt-28">
+  <h2 className="mb-3 font-display text-lg font-semibold text-ink">{i + 1}. {section.title}</h2>
   <div className="space-y-8">
   {section.content.map((item, ii) => (
   <div key={ii}>
-  <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-3 sora">{item.subtitle}</h3>
-  <p className="mb-0">{item.text}</p>
+  <h3 className="mb-2.5 font-display text-xs font-semibold uppercase tracking-wide text-ink-soft">{item.subtitle}</h3>
+  <p className="mb-0 max-w-[68ch] leading-relaxed text-stone-600">{item.text}</p>
   </div>
   ))}
   </div>
@@ -560,15 +569,15 @@ export default function SupportCenter() {
   )}
 
   {/* SHARED CTA */}
-  <div className="mt-20 pt-20 border-t border-slate-100">
-  <div className="bg-[#0f172a] rounded-3xl p-10 flex flex-col md:flex-row items-center justify-between gap-8">
+  <div className="mt-16 border-t border-hairline pt-16">
+  <div className="flex flex-col items-start justify-between gap-8 rounded-3xl bg-ink p-8 md:flex-row md:items-center md:p-10">
   <div>
-  <h3 className="text-white font-extrabold text-2xl mb-2 sora">Still have questions?</h3>
-  <p className="text-slate-400 text-sm">Our support team usually responds within 24 hours.</p>
+  <h2 className="mb-2 font-display text-xl font-semibold text-paper">Still have questions?</h2>
+  <p className="text-sm text-stone-400">Our support team usually responds within 24 hours.</p>
   </div>
   <a
   href="mailto:subekshya@sapkota.com"
-  className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm px-8 py-4 rounded-2xl transition-all whitespace-nowrap"
+  className="press whitespace-nowrap rounded-full bg-paper px-7 py-3.5 text-sm font-semibold text-ink transition-colors duration-200 hover:bg-stone-200"
   >
   Contact Support Center
   </a>
