@@ -9,6 +9,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import Footer from "../../components/common/Footer";
+import AboutVisual from "./components/AboutVisual";
 import useReveal from "../../hooks/useReveal";
 
 /*
@@ -87,6 +88,8 @@ const About = () => {
     className="reveal border-b border-hairline bg-[linear-gradient(to_bottom,rgba(28,25,23,0.05)_1px,transparent_1px)] bg-[length:100%_2rem]"
   >
   <div className="mx-auto max-w-6xl px-6 pb-16 pt-20 md:pb-24 md:pt-28">
+  <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-14">
+  <div className="lg:col-span-7">
   <p className="flex items-center gap-2.5 text-sm font-semibold uppercase tracking-[0.14em] text-stone-500">
   <span className="h-px w-8 bg-stone-400" aria-hidden="true" />
   About the project
@@ -96,7 +99,7 @@ const About = () => {
   One place to look, instead of forty feeds.
   </h1>
 
-  <p className="mt-7 max-w-[58ch] text-lg leading-relaxed text-stone-600">
+  <p className="mt-7 max-w-[54ch] text-lg leading-relaxed text-stone-600">
   EventHub is a centralised event discovery platform for students across Nepal.
   It connects students with academic, technical, cultural and professional events
   happening in different cities and institutions nationwide.
@@ -119,6 +122,13 @@ const About = () => {
   >
   Contact the team
   </Link>
+  </div>
+  </div>
+
+  {/* The right column used to be nothing at all. */}
+  <div className="lg:col-span-5">
+  <AboutVisual />
+  </div>
   </div>
   </div>
   </section>

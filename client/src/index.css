@@ -83,15 +83,48 @@ html {
  * grid settles. Transform and opacity only, so it stays on the compositor.
  */
 @keyframes rise {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 14px, 0);
+    from {
+      opacity: 0;
+      transform: translate3d(0, 14px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
   }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
+
+  /*
+   * Keyframes for the About masthead visual.
+   *
+   * All three end in the fully drawn state and use forwards fill, so when the
+   * reduced motion block collapses the duration to 0.01ms the result is the
+   * same finished picture, just without the travel.
+   */
+
+  /* Draws a connector along its own path rather than moving it. */
+  @keyframes draw {
+    to {
+      stroke-dashoffset: 0;
+    }
   }
-}
+
+  @keyframes fade-in {
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes rise-and-fade {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 14px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
 
 .rise {
   animation: rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
