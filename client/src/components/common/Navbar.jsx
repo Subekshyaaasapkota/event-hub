@@ -2,33 +2,116 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 import ROLES from "../../routes/roles.js";
-import {
-  LayoutDashboard,
-  LogOut,
-  User,
-  X,
-  Building2,
-  Shield,
-} from "lucide-react";
+import { LayoutDashboard, LogOut, User, Building2, Shield } from "lucide-react";
 import { getImageUrl } from "../../utils/imageUrl";
 import MobileTabBar from "./MobileTabBar";
+
+const PRIMARY_LINKS = [
+  { to: "/", label: "Home" },
+  { to: "/events", label: "Events" },
+  { to: "/about", label: "About" },
+  { to: "/contact", label: "Contact" },
+];
+
+// Tailwind cannot see class names that are built at runtime, so every possible
+// class string has to be written out in full here.
+//
+// These were remapped off the old indigo/purple palette and each text colour
+// moved up a shade. red-600 on red-50 and indigo-600 on indigo-50 were both
+// around 4.5:1 at best, and the role label is the one piece of text a user
+// needs to be certain about.
+const DASHBOARD_THEMES = {
+  admin: {
+    text: "text-red-800",
+    bg: "bg-red-50",
+    hoverBg: "hover:bg-red-100",
+    border: "border-red-200",
+    hoverText: "hover:text-red-900",
+  },
+  pending: {
+    text: "text-amber-900",
+    bg: "bg-amber-50",
+    hoverBg: "hover:bg-amber-100",
+    border: "border-amber-300",
+    hoverText: "hover:text-amber-950",
+  },
+  club: {
+    text: "text-ink",
+    bg: "bg-stone-100",
+    hoverBg: "hover:bg-stone-200",
+    border: "border-stone-300",
+    hoverText: "hover:text-ink",
+  },
+  student: {
+    text: "text-ink",
+    bg: "bg-stone-50",
+    hoverBg: "hover:bg-stone-100",
+    border: "border-stone-300",
+    hoverText: "hover:text-ink",
+  },
+  register: {
+    text: "text-emerald-800",
+    bg: "bg-emerald-50",
+    hoverBg: "hover:bg-emerald-100",
+    border: "border-emerald-200",
+    hoverText: "hover:text-emerald-900",
+  },
+};
+
+const NavLink = ({ to, children, pathname }) => {
+  const active = pathname === to;
+  return (
+    <Link
+      to={to}
+      aria-current={active ? "page" : undefined}
+      className={`underline-grow py-1 text-[15px] font-medium ${
+        active ? "text-ink" : "text-stone-600 hover:text-ink"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+};
 
 const Navbar = () => {
   const { user, logout, loading } = useAuth();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  // Remembers which URL failed rather than a plain boolean. Comparing the failed
+  // URL against the current one means a new avatar is tried again automatically,
+  // with no effect resetting state on account change.
+  const [brokenAvatarUrl, setBrokenAvatarUrl] = useState(null);
   const dropdownRef = useRef(null);
+  const triggerRef = useRef(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
-  const handleClickOutside = (event) => {
-  if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-  setOpen(false);
-  }
-  };
-  document.addEventListener("mousedown", handleClickOutside);
-  return () => document.removeEventListener("mousedown", handleClickOutside);
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Escape closes the menu and returns focus to the trigger. Without the second
+  // half, dismissing with the keyboard drops focus onto <body> and a keyboard
+  // user has to tab all the way back to the top of the page to carry on.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
+  // A different account's avatar URL should not inherit the previous failure.
+  const avatarUrl = user?.profilePicture ? getImageUrl(user.profilePicture) : null;
 
   // Centralized Role Check
   const userRoles = user?.roles || [];
@@ -39,290 +122,255 @@ const Navbar = () => {
 
   // Check if club registration is pending
   const isClubPending =
-  user?.club && !user.club.isVerified && user.club.status === "Pending";
+    user?.club && !user.club.isVerified && user.club.status === "Pending";
   const isClubApproved = user?.club && user.club.isVerified;
 
   // Reflects the account's actual standing. A student with a club application
   // in review is not just a "Student", and saying so was the confusing part.
   const roleLabel = isAdmin
-  ? "Administrator"
-  : isClubApproved
-  ? "Club Member"
-  : isClubPending
-  ? "Club Application Pending"
-  : user?.club?.status === "Rejected"
-  ? "Club Application Rejected"
-  : "Student";
-
-  const navLinkClass = (path) =>
-  `font-medium text-[15px] transition-all duration-300 ${
-  location.pathname === path
-  ? "text-indigo-600"
-  : "text-slate-700 hover:text-indigo-600"
-  }`;
+    ? "Administrator"
+    : isClubApproved
+      ? "Club Member"
+      : isClubPending
+        ? "Club Application Pending"
+        : user?.club?.status === "Rejected"
+          ? "Club Application Rejected"
+          : "Student";
 
   const getDashboardLink = () => {
-  if (isAdmin) return "/admin/dashboard";
-  if (isClubApproved) return "/club/dashboard";
-  if (isClubPending) return "/club/verification";
-  if (isStudent) return "/dashboard";
-  return "/";
+    if (isAdmin) return "/admin/dashboard";
+    if (isClubApproved) return "/club/dashboard";
+    if (isClubPending) return "/club/verification";
+    if (isStudent) return "/dashboard";
+    return "/";
   };
 
   const getDashboardIcon = () => {
-  if (isAdmin) return <Shield size={16} />;
-  if (isClub) return <Building2 size={16} />;
-  if (isStudent) return null;
-  return <LayoutDashboard size={16} />;
+    if (isAdmin) return <Shield size={16} aria-hidden="true" />;
+    if (isClub) return <Building2 size={16} aria-hidden="true" />;
+    if (isStudent) return null;
+    return <LayoutDashboard size={16} aria-hidden="true" />;
   };
 
   const getDashboardText = () => {
-  if (isAdmin) return "Admin Panel";
-  if (isClubPending) return "Verification Pending";
-  if (isClubApproved) return "Club Portal";
-  // if(isStudent) return "Welcome To Event Hub"
-  if (isStudent) return `${user.name}`;
-  return "Dashboard";
+    if (isAdmin) return "Admin Panel";
+    if (isClubPending) return "Verification Pending";
+    if (isClubApproved) return "Club Portal";
+    if (isStudent) return user.name;
+    return "Dashboard";
   };
 
-  // Tailwind cannot see class names that are built at runtime, so every
-  // possible class string has to be written out in full here.
-  const DASHBOARD_THEMES = {
-  red: {
-  text: "text-red-600",
-  bg: "bg-red-50",
-  hoverBg: "hover:bg-red-100",
-  border: "border-red-100",
-  hoverText: "hover:text-red-800",
-  },
-  amber: {
-  text: "text-amber-600",
-  bg: "bg-amber-50",
-  hoverBg: "hover:bg-amber-100",
-  border: "border-amber-100",
-  hoverText: "hover:text-amber-800",
-  },
-  indigo: {
-  text: "text-indigo-600",
-  bg: "bg-indigo-50",
-  hoverBg: "hover:bg-indigo-100",
-  border: "border-indigo-100",
-  hoverText: "hover:text-indigo-800",
-  },
-  emerald: {
-  text: "text-emerald-600",
-  bg: "bg-emerald-50",
-  hoverBg: "hover:bg-emerald-100",
-  border: "border-emerald-100",
-  hoverText: "hover:text-emerald-800",
-  },
-  slate: {
-  text: "text-slate-700",
-  bg: "bg-slate-50",
-  hoverBg: "hover:bg-slate-100",
-  border: "border-slate-200",
-  hoverText: "hover:text-slate-900",
-  },
-  };
+  const dashboardTheme = isAdmin
+    ? DASHBOARD_THEMES.admin
+    : isClubPending
+      ? DASHBOARD_THEMES.pending
+      : isClubApproved
+        ? DASHBOARD_THEMES.club
+        : isStudent
+          ? DASHBOARD_THEMES.student
+          : DASHBOARD_THEMES.register;
 
-  const getDashboardTheme = () => {
-  if (isAdmin) return DASHBOARD_THEMES.red;
-  if (isClubPending) return DASHBOARD_THEMES.amber;
-  if (isClubApproved) return DASHBOARD_THEMES.indigo;
-  if (isStudent) return DASHBOARD_THEMES.slate;
-  return DASHBOARD_THEMES.emerald;
-  };
+  // Initials fallback. Previously the <img> and the initial span each toggled
+  // the other's display through nextSibling.style, which broke silently if
+  // anything ever appeared between them. State does not have that failure mode.
+  const showAvatarImage = Boolean(avatarUrl) && brokenAvatarUrl !== avatarUrl;
+  const initials = (user?.name || "?").trim().charAt(0).toUpperCase();
 
-  // Don't render navbar while checking auth
-  if (loading) {
-  return (
-  <nav className="bg-white/80 backdrop-blur-md shadow-sm fixed w-full top-0 z-50 border-b border-gray-100">
-  <div className="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
-  <Link
-  to="/"
-  className="text-2xl font-black bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"
-  >
-  EventHub
-  </Link>
-  <div className="w-8 h-8 rounded-full bg-slate-200 animate-pulse"></div>
-  </div>
-  </nav>
+  // One shell, so the loading state cannot drift away from the real header.
+  const shell = (children) => (
+    <nav className="fixed inset-x-0 top-0 z-50 border-b border-hairline bg-paper/80 backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
+        <Link
+          to="/"
+          className="font-display text-xl font-semibold tracking-tight text-ink"
+        >
+          EventHub
+        </Link>
+        {children}
+      </div>
+    </nav>
   );
+
+  // Don't render the account area while checking auth, but keep the header
+  // height stable so the page below does not jump when auth resolves.
+  if (loading) {
+    return shell(
+      <div
+        className="h-9 w-9 animate-pulse rounded-full bg-stone-200"
+        aria-hidden="true"
+      />
+    );
   }
 
-return (
+  return (
     <>
-    <nav className="bg-white/80 backdrop-blur-md shadow-sm fixed w-full top-0 z-50 border-b border-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex justify-between items-center">
-    {/* Logo */}
-    <Link
-    to="/"
-    className="text-2xl font-black bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"
-    >
-    EventHub
-    </Link>
+      {shell(
+        <>
+          {/* Desktop Links */}
+          <div className="hidden items-center gap-8 md:flex">
+            {PRIMARY_LINKS.map((link) => (
+              <NavLink key={link.to} to={link.to} pathname={location.pathname}>
+                {link.label}
+              </NavLink>
+            ))}
 
+            {!user ? (
+              <div className="flex items-center gap-4">
+                <NavLink to="/login" pathname={location.pathname}>
+                  Login
+                </NavLink>
+                <Link
+                  to="/signup"
+                  className="press rounded-xl bg-ink px-5 py-2 text-sm font-semibold text-paper hover:bg-stone-800"
+                >
+                  Get Started
+                </Link>
+              </div>
+            ) : (
+              <div className="flex items-center gap-5">
+                {/* --- ROLE BASED PORTALS --- */}
+                <Link
+                  to={getDashboardLink()}
+                  className={`press flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold ${dashboardTheme.text} ${dashboardTheme.bg} ${dashboardTheme.border} ${dashboardTheme.hoverBg} ${dashboardTheme.hoverText}`}
+                >
+                  {getDashboardIcon()}
+                  <span className="max-w-[10rem] truncate">{getDashboardText()}</span>
+                </Link>
 
+                {/* Club Registration Button.
+                    Shown to any signed-in user who has neither an approved club nor an
+                    application still in review. This used to require !isStudent, which
+                    meant the button never appeared, because every new account is a Student
+                    and Students are exactly who needs to apply. */}
+                {!isAdmin && !isClubPending && !isClubApproved && (
+                  <Link
+                    to="/club/register"
+                    className={`press flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold ${DASHBOARD_THEMES.register.text} ${DASHBOARD_THEMES.register.bg} ${DASHBOARD_THEMES.register.border} ${DASHBOARD_THEMES.register.hoverBg} ${DASHBOARD_THEMES.register.hoverText}`}
+                  >
+                    <Building2 size={16} aria-hidden="true" />
+                    <span>Register Club</span>
+                  </Link>
+                )}
 
-    {/* Desktop Links */}
-    <div className="hidden md:flex items-center space-x-8">
-    <Link to="/" className={navLinkClass("/")}>
-    Home
-    </Link>
-    <Link to="/events" className={navLinkClass("/events")}>
-    Events
-    </Link>
-    <Link to="/about" className={navLinkClass("/about")}>
-    About
-    </Link>
-    <Link to="/contact" className={navLinkClass("/contact")}>
-    Contact
-    </Link>
+                {/* User Avatar & Dropdown */}
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    ref={triggerRef}
+                    type="button"
+                    onClick={() => setOpen((v) => !v)}
+                    aria-haspopup="menu"
+                    aria-expanded={open}
+                    aria-label={`Account menu for ${user.name}`}
+                    className="press flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-ink text-paper shadow-sm hover:bg-stone-700"
+                  >
+                    {showAvatarImage ? (
+                      <img
+                        src={avatarUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        onError={() => setBrokenAvatarUrl(avatarUrl)}
+                      />
+                    ) : (
+                      <span aria-hidden="true" className="text-base font-semibold">
+                        {initials}
+                      </span>
+                    )}
+                  </button>
 
-    {!user ? (
-    <div className="flex items-center space-x-4">
-    <Link to="/login" className={navLinkClass("/login")}>
-    Login
-    </Link>
-    <Link
-    to="/signup"
-    className="bg-indigo-600 text-white px-5 py-2 rounded-xl font-bold hover:bg-indigo-700 transition shadow-md"
-    >
-    Get Started
-    </Link>
-    </div>
-    ) : (
-    <div className="flex items-center space-x-6">
-    {/* --- ROLE BASED PORTALS --- */}
-    <Link
-    to={getDashboardLink()}
-    className={`flex items-center gap-2 font-bold text-sm px-4 py-2 rounded-xl transition-all ${getDashboardTheme().text} ${getDashboardTheme().bg} ${getDashboardTheme().hoverBg} ${getDashboardTheme().hoverText} ${!isStudent ? getDashboardTheme().border : ""}`}
-    >
-    {getDashboardIcon()}
-    <span>{getDashboardText()}</span>
-    </Link>
+                  {open && (
+                    <div
+                      role="menu"
+                      aria-label="Account"
+                      className="absolute right-0 z-60 mt-3 w-60 origin-top-right overflow-hidden rounded-2xl border border-hairline bg-white py-2 shadow-2xl motion-safe:animate-[rise_180ms_cubic-bezier(0.22,1,0.36,1)_both]"
+                    >
+                      <div className="border-b border-hairline bg-stone-50 px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
+                          {roleLabel}
+                        </p>
+                        <p className="truncate text-sm font-semibold text-ink">
+                          {user.name}
+                        </p>
+                        {user.club && (
+                          <p className="mt-1 text-xs font-medium text-stone-600">
+                            {user.club.name}
+                            {!user.club.isVerified && (
+                              <span
+                                className={`ml-1 ${
+                                  user.club.status === "Rejected"
+                                    ? "text-red-800"
+                                    : "text-amber-900"
+                                }`}
+                              >
+                                ({user.club.status === "Rejected" ? "Rejected" : "Pending"})
+                              </span>
+                            )}
+                          </p>
+                        )}
+                      </div>
 
-    {/* Club Registration Button.
-        Shown to any signed-in user who has neither an approved club nor an
-        application still in review. This used to require !isStudent, which
-        meant the button never appeared, because every new account is a Student
-        and Students are exactly who needs to apply. */}
-    {!isAdmin && !isClubPending && !isClubApproved && (
-    <Link
-    to="/club/register"
-    className="flex items-center gap-2 text-emerald-600 font-bold text-sm bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100 hover:bg-emerald-100 transition-all"
-    >
-    <Building2 size={16} />
-    <span>Register Club</span>
-    </Link>
-    )}
+                      <Link
+                        to="/profile"
+                        role="menuitem"
+                        onClick={() => setOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-700 transition-colors duration-200 hover:bg-stone-100 hover:text-ink"
+                      >
+                        <User size={16} aria-hidden="true" /> Profile Settings
+                      </Link>
 
-    {/* User Avatar & Dropdown */}
-    <div className="relative" ref={dropdownRef}>
-    <button
-    onClick={() => setOpen(!open)}
-    className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg border-2 border-white shadow-md hover:scale-105 transition overflow-hidden"
-    >
-    {user.profilePicture ? (
-    <img
-    src={getImageUrl(user.profilePicture)}
-    alt="Profile"
-    className="w-full h-full object-cover"
-    onError={(e) => {
-    e.target.onerror = null;
-    e.target.style.display = 'none';
-    e.target.nextSibling.style.display = 'flex';
-    }}
-    />
-    ) : null}
+                      {/* Show club registration link in dropdown if not registered and not a student */}
+                      {!user.club && !isAdmin && !isStudent && (
+                        <Link
+                          to="/club/register"
+                          role="menuitem"
+                          onClick={() => setOpen(false)}
+                          className={`flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors duration-200 ${DASHBOARD_THEMES.register.text} hover:bg-emerald-50`}
+                        >
+                          <Building2 size={16} aria-hidden="true" /> Register Organization
+                        </Link>
+                      )}
 
-    <span
-    className="w-full h-full flex items-center justify-center"
-    style={{ display: user.profilePicture ? 'none' : 'flex' }}
-    >
-    {user.name?.charAt(0).toUpperCase()}
-    </span>
-    </button>
+                      {/* Show verification status link if pending */}
+                      {isClubPending && (
+                        <Link
+                          to="/club/verification"
+                          role="menuitem"
+                          onClick={() => setOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-900 transition-colors duration-200 hover:bg-amber-50"
+                        >
+                          <LayoutDashboard size={16} aria-hidden="true" />
+                          Check Verification Status
+                        </Link>
+                      )}
 
-    {open && (
-    <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-60 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-    <div className="px-4 py-3 bg-gray-50/50 border-b border-gray-100">
-    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-    {roleLabel}
-    </p>
-    <p className="text-sm font-bold text-slate-800 truncate">
-    {user.name}
-    </p>
-    {user.club && (
-    <p className="text-[10px] text-indigo-600 font-bold mt-1">
-    {user.club.name}
-    {!user.club.isVerified && (
-    <span className="ml-1 text-amber-600">
-    ({user.club.status === "Rejected" ? "Rejected" : "Pending"})
-    </span>
-    )}
-    </p>
-    )}
-    </div>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          logout();
+                          setOpen(false);
+                        }}
+                        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-red-700 transition-colors duration-200 hover:bg-red-50"
+                      >
+                        <LogOut size={16} aria-hidden="true" /> Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
-    <Link
-    to="/profile"
-    onClick={() => setOpen(false)}
-    className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition"
-    >
-    <User size={16} /> Profile Settings
-    </Link>
-
-    {/* Show club registration link in dropdown if not registered and not a student */}
-    {!user.club && !isAdmin && !isStudent && (
-    <Link
-    to="/club/register"
-    onClick={() => setOpen(false)}
-    className="flex items-center gap-2 px-4 py-2.5 text-sm text-emerald-600 hover:bg-emerald-50 transition"
-    >
-    <Building2 size={16} /> Register Organization
-    </Link>
-    )}
-
-    {/* Show verification status link if pending */}
-    {isClubPending && (
-    <Link
-    to="/club/verification"
-    onClick={() => setOpen(false)}
-    className="flex items-center gap-2 px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50 transition"
-    >
-    <LayoutDashboard size={16} /> Check Verification Status
-    </Link>
-    )}
-
-    <button
-    onClick={() => {
-    logout();
-    setOpen(false);
-    }}
-    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 font-medium transition"
-    >
-    <LogOut size={16} /> Logout
-    </button>
-    </div>
-    )}
-    </div>
-    </div>
-    )}
-    </div>
-    </div>
-
-        </nav>
-
-    {/*
-      The tab bar has to sit OUTSIDE the <nav>. The nav is fixed and carries
-      backdrop-blur-md, and a backdrop-filter on an ancestor turns it into the
-      containing block for position: fixed descendants. Nested inside, the
-      bar's bottom-0 resolved against the 64px header instead of the viewport,
-      which pinned it to the top of the page.
-    */}
-    <MobileTabBar />
-  </>
+      {/*
+        The tab bar has to sit OUTSIDE the <nav>. The nav is fixed and carries
+        backdrop-blur-md, and a backdrop-filter on an ancestor turns it into the
+        containing block for position: fixed descendants. Nested inside, the
+        bar's bottom-0 resolved against the 64px header instead of the viewport,
+        which pinned it to the top of the page.
+      */}
+      <MobileTabBar />
+    </>
   );
 };
 
