@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { 
   Search, Layers, ExternalLink, Activity, BookmarkCheck, LayoutGrid, List
 } from "lucide-react";
@@ -7,7 +7,6 @@ import useEvents from "../../hooks/useEvents";
 import EventCard from "../../components/common/EventCard";
 
 const RegisteredEvents = () => {
-  const navigate = useNavigate();
   const {
   fetchEvents,
   fetchMyRegistrations,
@@ -107,9 +106,17 @@ const RegisteredEvents = () => {
   ) : (
   <div className="space-y-6">
   {myRegistrations.map((reg) => (
-  <div key={reg._id} className="bg-white border border-slate-100 p-6 rounded-[2.5rem] flex items-center gap-8 group hover:border-indigo-100 transition-all cursor-pointer shadow-sm" onClick={() => navigate(`/event/${reg.event?._id}`)}>
+  <Link
+  key={reg._id}
+  to={`/event/${reg.event?._id}`}
+  className="bg-white border border-slate-100 p-6 rounded-[2.5rem] flex items-center gap-8 group hover:border-indigo-100 transition-all cursor-pointer shadow-sm focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100"
+  >
   <div className="w-24 h-24 rounded-3xl overflow-hidden shadow-inner shrink-0 group-hover:scale-105 transition-transform duration-500">
-  <img src={normalizePoster(reg.event?.poster)} className="w-full h-full object-cover" alt="poster" />
+  <img
+  src={normalizePoster(reg.event?.poster)}
+  className="w-full h-full object-cover"
+  alt={`${reg.event?.title || "Event"} poster`}
+  />
   </div>
   <div className="flex-1 min-w-0">
   <div className="flex items-center gap-3 mb-2">
@@ -127,7 +134,7 @@ const RegisteredEvents = () => {
   }`}>
   {reg.status}
   </div>
-  </div>
+  </Link>
   ))}
   </div>
   )

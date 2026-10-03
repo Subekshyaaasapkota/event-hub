@@ -285,10 +285,11 @@ const AdminManageClubs = () => {
   {/* Sidebar Info */}
   <div className="lg:col-span-2 bg-slate-50 p-12 border-r border-slate-100">
   <div className="w-40 h-40 rounded-[3rem] bg-white p-2 shadow-xl shadow-slate-200 mx-auto mb-8">
-  <img
-  src={selectedClub.logo}
-  className="w-full h-full object-cover rounded-[2.5rem]"
-  />
+<img
+      src={selectedClub.logo}
+      alt={`${selectedClub.clubName || "Club"} logo`}
+      className="w-full h-full object-cover rounded-[2.5rem]"
+      />
   </div>
   <div className="text-center mb-10">
   <h2 className="text-2xl font-black text-slate-800 tracking-tight mb-2">

@@ -489,7 +489,11 @@ const ManageEventRegisterByUser = () => {
   <div className="w-32 h-32 rounded-[2.5rem] bg-white absolute -bottom-16 left-12 p-1.5 shadow-2xl">
   <div className="w-full h-full rounded-[2rem] bg-indigo-50 flex items-center justify-center font-black text-4xl text-indigo-600 overflow-hidden relative">
   {selectedUser.profilePicture ? (
-  <img src={getImageUrl(selectedUser.profilePicture)} className="w-full h-full object-cover" />
+  <img
+        src={getImageUrl(selectedUser.profilePicture)}
+        alt={`${selectedUser.name || "User"} profile picture`}
+        className="w-full h-full object-cover"
+        />
   ) : (
   selectedUser.name?.charAt(0).toUpperCase()
   )}
