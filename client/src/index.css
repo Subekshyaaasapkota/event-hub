@@ -3,3 +3,69 @@
 body {
   font-family: "Poppins", sans-serif;
 }
+
+/*
+ * Printing.
+ *
+ * The admin event details page has a print button, but with no print styles
+ * window.print() emits the navbar, sidebar, footer and every button along
+ * with the document. Hiding the app chrome and expanding the content leaves
+ * the actual event record on the page.
+ */
+@media print {
+  /* Force background colours to survive, otherwise status chips print blank. */
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background: #ffffff;
+  }
+
+  /* Hide navigation, sidebars, footers and floating widgets. */
+  nav,
+  aside,
+  footer,
+  header nav,
+  [role="navigation"],
+  [data-print="hide"] {
+    display: none !important;
+  }
+
+  /* Buttons are useless on paper and often leave stray borders. */
+  button,
+  input,
+  select,
+  textarea,
+  [role="button"] {
+    display: none !important;
+  }
+
+  /* Let the content own the page instead of sitting in a scroll box. */
+  main,
+  [role="main"] {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Avoid cards being split across a page break. */
+  [data-print="keep"] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+  }
+
+  /* Show the destination of links, which are otherwise meaningless on paper. */
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.75em;
+    color: #64748b;
+    word-break: break-all;
+  }
+
+  @page {
+    margin: 16mm;
+  }
+}

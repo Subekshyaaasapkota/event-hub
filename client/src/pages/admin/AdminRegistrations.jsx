@@ -20,6 +20,7 @@ import {
 import Navbar from "../../components/common/Navbar";
 import Footer from "../../components/common/Footer";
 import useAdmin from "../../hooks/useAdmin";
+import { exportToCsv, stampedFilename } from "../../utils/csv";
 import { toast } from "react-hot-toast";
 
 const AdminRegistrations = () => {
@@ -84,34 +85,54 @@ const AdminRegistrations = () => {
   });
   };
 
-  const exportToCSV = () => {
-  const csvData = filteredRegistrations.map((reg) => ({
-  "Event Title": reg.event?.title || "Unknown Event",
-  "Club/Organizer": reg.event?.organizer?.name || "Unknown",
-  "Event Date": reg.event?.eventDate
-  ? formatDate(reg.event.eventDate)
-  : "N/A",
-  "Student Name": reg.user.name,
-  Email: reg.user.email,
-  Phone: reg.phone || "N/A",
-  College: reg.user.college || "N/A",
-  "Registration Date": formatDate(reg.createdAt),
-  Status: reg.status,
-  }));
+const CSV_COLUMNS = [
+{ key: "Event Title", label: "Event Title" },
+{ key: "Club/Organizer", label: "Club/Organizer" },
+{ key: "Event Date", label: "Event Date" },
+{ key: "Student Name", label: "Student Name" },
+{ key: "Email", label: "Email" },
+{ key: "Phone", label: "Phone" },
+{ key: "College", label: "College" },
+{ key: "Registration Date", label: "Registration Date" },
+{ key: "Status", label: "Status" },
+];
 
-  const csvString = [
-  Object.keys(csvData[0]).join(","),
-  ...csvData.map((row) => Object.values(row).join(",")),
-  ].join("\n");
+const exportToCSV = () => {
+const rows = filteredRegistrations.map((reg) => ({
+"Event Title": reg.event?.title || "Unknown Event",
+"Club/Organizer": reg.event?.organizer?.name || "Unknown",
+"Event Date": reg.event?.eventDate ? formatDate(reg.event.eventDate) : "N/A",
+"Student Name": reg.user?.name || "Unknown",
+Email: reg.user?.email || "N/A",
+Phone: reg.phone || "N/A",
+College: reg.user?.college || "N/A",
+"Registration Date": reg.createdAt ? formatDate(reg.createdAt) : "N/A",
+Status: reg.status || "N/A",
+}));
 
-  const blob = new Blob([csvString], { type: "text/csv" });
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "all-event-registrations.csv";
-  a.click();
-  window.URL.revokeObjectURL(url);
-  };
+// Exports exactly what the table is showing, so a filtered view does not
+// silently hand back the full list.
+const filename =
+selectedEvent === "all"
+? stampedFilename("all-event-registrations")
+: `registrations-${(uniqueEvents.find((e) => e._id === selectedEvent)?.title || "event")
+.replace(/[^a-z0-9]+/gi, "-")
+.replace(/^-|-$/g, "")
+.toLowerCase()}.csv`;
+
+const result = exportToCsv({
+rows,
+columns: CSV_COLUMNS,
+filename,
+emptyMessage: "No registrations match the current search and filters.",
+});
+
+if (result.ok) {
+toast.success(result.message);
+} else {
+toast.error(result.message);
+}
+};
 
   if (loading) {
   return (

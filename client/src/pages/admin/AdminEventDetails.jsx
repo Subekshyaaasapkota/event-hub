@@ -22,7 +22,6 @@ import {
   Trash2,
   XCircle,
   AlertCircle,
-  Download,
   Printer,
   Share2,
   Eye,
