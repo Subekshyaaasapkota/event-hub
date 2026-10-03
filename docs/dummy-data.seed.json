@@ -1,0 +1,259 @@
+{
+  "generatedAt": "2026-10-02T18:11:22.876Z",
+  "database": "event_hub_portal",
+  "accounts": [
+    {
+      "role": "Admin + Student",
+      "name": "Aarav Karki",
+      "email": "admin@eventhub.dev",
+      "password": "Admin@12345",
+      "district": "Kathmandu",
+      "college": "Nepal College of Information Technology",
+      "id": "6abff329d46ed14812c5f66e"
+    },
+    {
+      "role": "Club + Student",
+      "name": "Sneha Adhikari",
+      "email": "robotics.club@eventhub.dev",
+      "password": "Club@12345",
+      "district": "Lalitpur",
+      "college": "Nepal College of Information Technology",
+      "id": "6abff32ad46ed14812c5f66f"
+    },
+    {
+      "role": "Club + Student",
+      "name": "Nirajan Thapa",
+      "email": "photography.club@eventhub.dev",
+      "password": "Club@12345",
+      "district": "Kathmandu",
+      "college": "Kathmandu University",
+      "id": "6abff32ad46ed14812c5f670"
+    },
+    {
+      "role": "Club + Student",
+      "name": "Pratiksha Rai",
+      "email": "startup.club@eventhub.dev",
+      "password": "Club@12345",
+      "district": "Kathmandu",
+      "college": "Kathmandu University",
+      "id": "6abff32ad46ed14812c5f671"
+    },
+    {
+      "role": "Student",
+      "name": "Ram Sharma",
+      "email": "student@eventhub.dev",
+      "password": "Student@12345",
+      "district": "Kathmandu",
+      "college": "Nepal College of Information Technology",
+      "id": "6abff32ad46ed14812c5f672"
+    },
+    {
+      "role": "Student",
+      "name": "Sita Thapa",
+      "email": "sita.thapa@student.eventhub.dev",
+      "password": "Student@12345",
+      "district": "Kaski",
+      "college": "Pokhara Engineering Campus",
+      "id": "6abff32ad46ed14812c5f673"
+    },
+    {
+      "role": "Student",
+      "name": "Bikash Gurung",
+      "email": "bikash.gurung@student.eventhub.dev",
+      "password": "Student@12345",
+      "district": "Bhaktapur",
+      "college": "Asian College of Higher Studies",
+      "id": "6abff32ad46ed14812c5f674"
+    },
+    {
+      "role": "Student",
+      "name": "Anisha Basnet",
+      "email": "anisha.basnet@student.eventhub.dev",
+      "password": "Student@12345",
+      "district": "Kathmandu",
+      "college": "Nepal College of Information Technology",
+      "id": "6abff32ad46ed14812c5f675"
+    }
+  ],
+  "legacyAccounts": [
+    {
+      "role": "Student",
+      "name": "-1 manish kc",
+      "email": "123@123.com",
+      "password": "Student@12345",
+      "id": "6a79308f2b40eab747b019b8"
+    },
+    {
+      "role": "Student",
+      "name": "-23 hello",
+      "email": "156@56.com",
+      "password": "Student@12345",
+      "id": "6a7931282b40eab747b019b9"
+    },
+    {
+      "role": "Admin",
+      "name": "Subekshya Sapkota",
+      "email": "sapkotasubekshya600@gmail.com",
+      "password": "Admin@12345",
+      "id": "6a785777394224e36ed2abc9"
+    },
+    {
+      "role": "Club",
+      "name": "Subekshya Sapkota",
+      "email": "sapkotasubekshya60@gmail.com",
+      "password": "Club@12345",
+      "id": "6a785668394224e36ed2abc8"
+    },
+    {
+      "role": "Student",
+      "name": "Student Subekshya Sapkota Pagal",
+      "email": "sapkotasubekshya6000@gmail.com",
+      "password": "Student@12345",
+      "id": "6a785f0c394224e36ed2abcb"
+    }
+  ],
+  "clubs": [
+    {
+      "name": "EventHub Robotics Club",
+      "status": "Approved",
+      "verified": true,
+      "district": "Lalitpur",
+      "id": "6abff32bd46ed14812c5f676"
+    },
+    {
+      "name": "EventHub Photography Society",
+      "status": "Approved",
+      "verified": true,
+      "district": "Kathmandu",
+      "id": "6abff32bd46ed14812c5f677"
+    },
+    {
+      "name": "EventHub Entrepreneurship Cell",
+      "status": "Approved",
+      "verified": true,
+      "district": "Kathmandu",
+      "id": "6abff32bd46ed14812c5f678"
+    },
+    {
+      "name": "Himalayan Trekkers Collective",
+      "status": "Pending",
+      "verified": false,
+      "district": "Kathmandu",
+      "id": "6abff32bd46ed14812c5f679"
+    }
+  ],
+  "events": [
+    {
+      "title": "Intro to Web Development Bootcamp",
+      "id": "6abff34bd46ed14812c5f693",
+      "status": "published",
+      "category": "Workshop",
+      "type": "physical",
+      "district": "Kathmandu",
+      "date": "2026-10-08",
+      "deadline": "2026-10-05",
+      "price": 0,
+      "capacity": 30,
+      "confirmed": 4,
+      "pending": 0
+    },
+    {
+      "title": "AI and Machine Learning Seminar",
+      "id": "6abff34bd46ed14812c5f694",
+      "status": "published",
+      "category": "Seminar",
+      "type": "online",
+      "district": "Kathmandu",
+      "date": "2026-10-11",
+      "deadline": "2026-10-09",
+      "price": 0,
+      "capacity": 100,
+      "confirmed": 5,
+      "pending": 0
+    },
+    {
+      "title": "National Robotics Championship 2026",
+      "id": "6abff34bd46ed14812c5f695",
+      "status": "published",
+      "category": "Competition",
+      "type": "physical",
+      "district": "Lalitpur",
+      "date": "2026-10-26",
+      "deadline": "2026-10-20",
+      "price": 1500,
+      "capacity": 10,
+      "confirmed": 0,
+      "pending": 1
+    },
+    {
+      "title": "Photography Walk: Patan Durbar Square",
+      "id": "6abff34bd46ed14812c5f696",
+      "status": "published",
+      "category": "Meetup",
+      "type": "physical",
+      "district": "Lalitpur",
+      "date": "2026-10-06",
+      "deadline": "2026-10-04",
+      "price": 0,
+      "capacity": 4,
+      "confirmed": 4,
+      "pending": 0
+    },
+    {
+      "title": "Git and GitHub Masterclass",
+      "id": "6abff34cd46ed14812c5f697",
+      "status": "published",
+      "category": "Workshop",
+      "type": "online",
+      "district": "Kathmandu",
+      "date": "2026-10-14",
+      "deadline": "2026-10-12",
+      "price": 0,
+      "capacity": 25,
+      "confirmed": 2,
+      "pending": 0
+    },
+    {
+      "title": "Tech Startup Pitch Night",
+      "id": "6abff34cd46ed14812c5f698",
+      "status": "published",
+      "category": "Competition",
+      "type": "physical",
+      "district": "Kathmandu",
+      "date": "2026-10-19",
+      "deadline": "2026-10-16",
+      "price": 500,
+      "capacity": 40,
+      "confirmed": 0,
+      "pending": 1
+    },
+    {
+      "title": "Hackathon: Build for Nepal",
+      "id": "6abff34cd46ed14812c5f699",
+      "status": "draft",
+      "category": "Hackathon",
+      "type": "physical",
+      "district": "Kathmandu",
+      "date": "2026-11-02",
+      "deadline": "2026-10-27",
+      "price": 0,
+      "capacity": 50,
+      "confirmed": 0,
+      "pending": 0
+    },
+    {
+      "title": "Inter College Debate 2025",
+      "id": "6abff34cd46ed14812c5f69a",
+      "status": "completed",
+      "category": "Competition",
+      "type": "physical",
+      "district": "Kathmandu",
+      "date": "2026-08-23",
+      "deadline": "2026-08-18",
+      "price": 0,
+      "capacity": 20,
+      "confirmed": 5,
+      "pending": 0
+    }
+  ]
+}
