@@ -1,11 +1,30 @@
 <!doctype html>
 <html lang="en">
   <head>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <!--
+    Poppins was previously loaded at 400/500/600 only, while the UI asks for
+    font-extrabold (800) and font-black (900) in a few hundred places. The
+    browser was synthesising those weights, which is why headings rendered
+    muddy instead of heavy. Load the weights that are actually used.
+
+    Space Grotesk is the display voice for the marketing surfaces. Poppins stays
+    the body face so the rest of the app is unaffected.
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap"
+    rel="stylesheet"
+  />
 
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#111114" />
+  <meta
+    name="description"
+    content="EventHub is a student event platform for discovering workshops, hackathons and bootcamps across Nepal."
+  />
   <title>EventHub</title>
   </head>
   <body>

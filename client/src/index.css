@@ -1,7 +1,88 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens.
+ *
+ * Space Grotesk carries the display voice on the marketing surfaces because it
+ * has real character, where Poppins is a neutral UI face that reads as
+ * "unstyled" the moment it is asked to set a headline.
+ */
+@theme {
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Poppins", ui-sans-serif, system-ui, sans-serif;
+
+  /* Warm paper page instead of the cold blue-white the app used everywhere. */
+  --color-paper: #faf9f6;
+  --color-ink: #111114;
+  --color-ink-soft: #2a2a30;
+  --color-hairline: #e7e5e4;
+}
+
 body {
-  font-family: "Poppins", sans-serif;
+  font-family: var(--font-sans);
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Keyboard focus.
+ *
+ * There was no :focus-visible rule anywhere in the app, so tabbing through the
+ * interface moved focus invisibly. This restores a visible ring on every
+ * focusable element without touching the default ring on mouse clicks.
+ */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid #4338ca;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Anchor jumps should not snap, but must not move the page for reduced motion. */
+html {
+  scroll-behavior: smooth;
+}
+
+/*
+ * Motion policy.
+ *
+ * The homepage previously ran five simultaneous infinite animations (spin,
+ * float, bob, pulse, and staggered slides) with no opt-out. Every entrance
+ * animation in the app now lives behind this query, so the interface settles
+ * immediately for anyone who asked the OS to reduce motion.
+ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * The one authored entrance moment on the homepage: cards rise once as the
+ * grid settles. Transform and opacity only, so it stays on the compositor.
+ */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.rise {
+  animation: rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /*
