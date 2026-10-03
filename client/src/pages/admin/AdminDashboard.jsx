@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import useAdmin from "../../hooks/useAdmin";
 import Footer from "../../components/common/Footer";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 /*  Animated counter  */
 const useCounter = (target, duration = 1000) => {
@@ -69,13 +69,15 @@ const STAT_STYLES = {
   },
 };
 
-const StatCard = ({ icon: Icon, label, value, color, trend }) => {
+const StatCard = ({ icon: Icon, label, value, color, trend, to }) => {
   const animated = useCounter(value);
   const s = STAT_STYLES[color];
-  return (
-  <div
-  className={`relative border rounded-2xl p-5 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 ${s.wrap}`}
-  >
+
+  // These cards lift on hover, which reads as clickable, so they have to
+  // actually go somewhere. Rendered as a Link so they are keyboard reachable
+  // and open in a new tab with ctrl/cmd-click like every other link.
+  const inner = (
+  <>
   <div className="flex items-start justify-between mb-4">
   <div
   className={`w-10 h-10 rounded-xl flex items-center justify-center border ${s.icon}`}
@@ -95,8 +97,24 @@ const StatCard = ({ icon: Icon, label, value, color, trend }) => {
   {trend && (
   <p className={`text-[11px] mt-2 font-medium ${s.trend}`}>{trend}</p>
   )}
-  </div>
+  </>
   );
+
+  const className = `relative block border rounded-2xl p-5 transition-all duration-200 ${
+  to
+  ? "hover:-translate-y-0.5 hover:shadow-lg cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+  : "hover:-translate-y-0.5 hover:shadow-lg"
+  } ${s.wrap}`;
+
+  if (to) {
+  return (
+  <Link to={to} className={className} aria-label={`${label}: ${value}. ${trend || ""}`}>
+  {inner}
+  </Link>
+  );
+  }
+
+  return <div className={className}>{inner}</div>;
 };
 
 /*  Skeleton  */
@@ -247,6 +265,7 @@ const AdminDashboard = () => {
   value={totalClubs}
   color="purple"
   trend="Registered"
+  to="/admin/clubs"
   />
   <StatCard
   icon={Users}
@@ -254,6 +273,7 @@ const AdminDashboard = () => {
   value={totalUsers}
   color="green"
   trend="Platform members"
+  to="/admin/users"
   />
   <StatCard
   icon={Calendar}
@@ -261,6 +281,7 @@ const AdminDashboard = () => {
   value={totalEvents}
   color="blue"
   trend="All time"
+  to="/admin/events"
   />
   <StatCard
   icon={CheckSquare}
@@ -268,6 +289,7 @@ const AdminDashboard = () => {
   value={pendingClubs}
   color="amber"
   trend={pendingClubs > 0 ? "Needs attention" : "All clear"}
+  to="/admin/club/verification"
   />
   </div>
   )}
