@@ -1,0 +1,248 @@
+# EventHub Bug Fix Report
+
+Every issue below was found by reading the code and exercising the running app,
+then fixed and verified. Each section names the commit that carries the fix.
+
+Commits, newest first:
+
+| Commit | Area |
+| --- | --- |
+| `3e53864` | 404 page, error boundary, placeholder identity |
+| `6d32995` | Dead analytics dropdown, dead poster image, dead contact form |
+| `72efacc` | Malformed event id returned 500 |
+| `2b57071` | Admin stat cards were not clickable |
+| `eaca323` | CSV export did not work; organizer column always empty |
+| `f9ad6f6` | Signup asked for a role the server would never grant |
+| `119983d` | Client auth flow, routing and dead UI |
+| `bbd1928` | Server auth, registration, payment, geospatial |
+
+---
+
+## 1. Security and authorization
+
+### Signup let you pick your own role
+`Signup.jsx` rendered a role selector and submitted it, but
+`authService.js` forced every new account to `Student`. The form therefore
+promised something the server silently ignored, and anyone reading the UI
+would believe self-registering as an Admin or Club was possible. It is not,
+and must not be.
+
+The selector was removed. Club access now happens only through
+`/club/register` plus admin approval, and the signup copy says so.
+*(`f9ad6f6`)*
+
+### Club role could be granted without approval
+Approval is the only path that adds the `Club` role, enforced in
+`clubService.approveClub`. Verified end to end: signup, submit application,
+admin approves, role appears, `/clubs/status` reports verified.
+*(`bbd1928`)*
+
+### Auth errors leaked internals
+Registration and login failures returned raw driver messages that could
+include collection names and query shapes. Responses are now shaped
+deliberately, and unexpected errors are logged server side rather than sent
+to the client. *(`bbd1928`)*
+
+### Contact form was an injection vector waiting to happen
+The new endpoint forwards free text from the public internet into an HTML
+email body. Every interpolated field is escaped before use, so a message
+containing `<script>` cannot break the markup. *(`6d32995`)*
+
+---
+
+## 2. Controls that did nothing
+
+These were the most damaging defects in the project: UI that looked finished
+and silently did nothing.
+
+### The analytics range selector was not connected to anything
+`EventAnalytics.jsx` had a `<select>` offering 7 days, 30 days and all time,
+with no `value`, no `onChange`, and no state. The chart underneath was
+hardcoded to the last 7 days, so every option produced an identical graph.
+
+It now drives real logic: daily buckets for 7 and 30 days, monthly buckets
+for all time. *(`6d32995`)*
+
+### The headline count disagreed with the chart it sat next to
+Fixing the dropdown exposed a second bug. The chart bucketed registrations
+by UTC day key, while the headline figure filtered on exact instants, so
+around midnight the two disagreed. "All Time" was worse: it counted records
+whose `createdAt` could not be parsed, which the chart dropped entirely, so
+the total could read higher than the sum of every bar.
+
+Both now derive from one shared window definition and drop unparseable dates
+together. Verified that the headline equals the sum of the bars across
+boundary cases, a 400-registration set, malformed dates, and empty and null
+input. *(`6d32995`)*
+
+### The contact form only wrote to the console
+`handleSubmit` called `e.preventDefault()` and then `console.log("Message
+sent!")`. The primary call to action on the contact page did nothing at all.
+
+It now posts to a new `POST /api/contact`, which validates the payload,
+rate limits to 5 requests per IP per 15 minutes, and forwards to Resend. The
+form shows field-level validation, a sending state, and success or failure
+toasts. A missing mail configuration returns 503 with an "email us
+directly" message rather than blaming the visitor. Messages were confirmed
+delivered, with real Resend message IDs. *(`6d32995`)*
+
+### Admin stat cards were not links
+The four summary numbers looked like navigation but were plain `div`s.
+Wrapped in React Router `Link`s to `/admin/clubs`, `/admin/users`,
+`/admin/events` and `/admin/club/verification`, so they are now focusable
+with the keyboard and show a pointer. *(`2b57071`)*
+
+### CSV export produced nothing usable
+The download button built a filename, created an anchor, never appended it
+to the document and never clicked it. Columns were joined with bare commas,
+so any value containing a comma, quote or newline corrupted the file. The
+organizer column was always empty because of the populate bug in section 4.
+
+Rewritten with RFC 4180 quoting, a UTF-8 BOM so Excel opens it correctly,
+date-stamped filenames, a clear message when the filtered result set is
+empty, and a cleaned-up object URL. Round-tripped through a real CSV parser
+including a value with an embedded comma and quote. *(`eaca323`)*
+
+### Every event without a poster showed a broken image
+Event posters fell back to `via.placeholder.com`, a service that has been
+shut down, so the fallback was itself a dead request and the browser painted
+a broken-image icon. Replaced with an inlined SVG that cannot fail to load,
+plus an `onError` fallback for posters that 404 after a folder rename. The
+duplicated local `normalizePoster` helper was removed in favour of the
+shared one. *(`6d32995`)*
+
+---
+
+## 3. Errors that crashed instead of answering
+
+### A malformed event id returned 500
+`/api/events/:id` passed the raw parameter to Mongoose. A non-ObjectId string
+made `findById` throw a `CastError` with no handler, so a bad URL produced a
+500 and a stack trace in the response instead of a 404.
+
+Added a shared `isValidObjectId` / `sendInvalidId` pair and guarded
+`getEventById`, `updateEvent` and `deleteEvent`, each returning consistent
+JSON. *(`72efacc`)*
+
+Note: `/api/events/nearby` is not a route and now correctly returns 404. The
+real nearby search is a query on the collection root,
+`GET /api/events?lat=27.7172&lng=85.3240&radius=25`.
+
+---
+
+## 4. Data that never arrived
+
+### The organizer column was always "Unknown"
+`adminController.js` populated `event` but requested `organizer` as a field
+*inside* the event projection. Organizer lives on the separate `RegisterClub`
+collection, so it was never selected.
+
+Replaced with a nested populate. Verified across all 24 registrations that
+`event.organizer.name` is now populated rather than falling back.
+*(`eaca323`)*
+
+### A club application held a status the schema forbids
+`RegisterClub.status` is an enum of `Pending`, `Approved`, `Rejected`, but
+one row held `"Verified"`. Mongoose only validates on write, so it had been
+sitting there undetected.
+
+It was not user-visible, because the client keys off the `isVerified`
+boolean rather than the status string, but it was invalid data. Normalized
+to `Approved`, matching the 5 other clubs. *(`data cleanup)*
+
+---
+
+## 5. Print output included the whole application
+
+`AdminEventDetails` had a print button that triggered `window.print()`, but
+nothing was styled for print. Printing produced the navbar, sidebar and
+buttons on the paper along with the event.
+
+Added print styles that hide navigation, sidebars and controls, and remove
+the decorative background. *(`eaca323`)*
+
+---
+
+## 6. Missing error states
+
+### Unknown URLs silently redirected to the home page
+The catch-all route was `<Route path="*" element={<Navigate to="/" />} />`. A
+dead or mistyped link bounced the visitor home with no explanation and broke
+back-button behaviour.
+
+Replaced with a 404 page offering go back, home, and browse events, rendered
+inside the main layout so the navbar stays available. *(`3e53864`)*
+
+### A render crash blanked the entire app
+Any uncaught render error unmounted the whole React tree to a white screen
+with no way out short of a manual refresh.
+
+Added an error boundary around the router that shows a retry screen, with
+the underlying error printed only in development builds. *(`3e53864`)*
+
+---
+
+## 7. Placeholder content
+
+Content that read as finished but was not real:
+
+| Location | Was | Now |
+| --- | --- | --- |
+| Event poster fallback | dead `via.placeholder.com` | inlined SVG *(6d32995)* |
+| Contact page | `+977 98XXXXXXXX` | real contact details *(6d32995)* |
+| Terms and privacy `mailto:` | `support@eventhub.com.np`, a domain nobody owns | maintainer address *(3e53864)* |
+| Registration phone field | `+977 98XXXXXXXX` | `9812345678` *(3e53864)* |
+| Profile name field | `Identity Name` | `Your name` *(3e53864)* |
+
+Deliberately left alone: generic field hints such as `name@example.com`, the
+seeded `admin@eventhub.dev` demo login, and the genuine eSewa gateway URLs.
+
+---
+
+## 8. Verification
+
+### Automated
+
+- Client ESLint: clean.
+- Client production build: clean, 2639 modules.
+- Server syntax check: all 38 files parse.
+- Contact endpoint: empty body 422, malformed email 422, missing message 422,
+  oversized name 422, undersized message 422, rate limiter trips on the 6th
+  request, valid messages confirmed delivered via Resend.
+- Trend windows: headline equals chart sum for all three ranges, across
+  boundary timestamps, 400 registrations, unparseable dates, empty and null
+  input, and an unrecognised range value.
+- Custom smoke suites run during the earlier passes: auth 20/20,
+  registration 22/22, seed 39/39, documentation 12/12, club approval 5/5,
+  geospatial 14/14.
+
+### Live, against the running servers
+
+```
+health                {"status":"ok","database":"connected"}
+GET /api/events       200
+POST /api/contact     422 for an empty body, as intended
+GET /events/nearby    404
+GET /api/events?lat=27.7172&lng=85.3240&radius=25   200, 6 events
+all 24 registrations  organizer populated
+deep links /contact, /this-does-not-exist   200, so the router renders 404
+```
+
+### Data state after the work
+
+16 users, 6 clubs, 9 events, 24 registrations. All 6 clubs are `Approved` and
+verified, no event is missing a poster, no registration points at a deleted
+event, and there are no orphaned rows.
+
+### Known gaps
+
+- No formal automated test suite exists. `npm test` on the server is a
+  placeholder, and the checks above were run as one-off scripts. This is the
+  single biggest thing missing from the project.
+- Khalti and eSewa payment flows cannot be fully exercised without live
+  merchant credentials.
+- The production bundle is a single 1.3 MB chunk and emits a size warning.
+  Route level code splitting would fix it.
+- Some accounts in the database look like manual test signups rather than
+  seeded data. They were left in place rather than deleted, because they may
+  be real accounts belonging to the project team.
