@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Users, Calendar, MapPin, Clock, Globe, ArrowUpRight } from "lucide-react";
 import CountdownTimer from "./CountdownTimer";
-import { getImageUrl } from "../../utils/imageUrl";
+import { getEventPoster, onPosterError } from "../../utils/imageUrl";
 
 /**
  * A one-minute clock shared by every card.
@@ -108,31 +108,24 @@ const EventCard = ({
       active:translate-y-0"
     >
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-stone-200">
-        {poster ? (
-          <img
-            src={getImageUrl(poster)}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            className={`h-full w-full object-cover transition-transform duration-500 ease-out
-              group-hover:scale-[1.04] ${isCompleted ? "grayscale" : ""}`}
-            onError={(e) => {
-              e.currentTarget.style.visibility = "hidden";
-            }}
-          />
-        ) : (
-          // A flat ink field with the category. The old gradient placeholder
-          // was decoration standing in for content.
-          <div className="flex h-full w-full flex-col justify-between bg-ink-soft p-4">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-400">
-              {category || "Event"}
-            </span>
-            <Calendar size={22} className="text-stone-500" />
-          </div>
-        )}
+        {/* One path for both cases: a real poster when there is one, otherwise
+            the drawn category placeholder. onError covers the third case, a
+            poster URL that resolves but 404s. */}
+        <img
+          src={getEventPoster({ poster, category, title })}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className={`h-full w-full object-cover transition-transform duration-500 ease-out
+            group-hover:scale-[1.04] ${isCompleted ? "grayscale" : ""}`}
+          onError={(e) => onPosterError({ category, title }, e.currentTarget)}
+        />
 
-        {/* Bottom scrim so the countdown stays legible on a light poster. */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/45 to-transparent" />
+        {/* Scrim only where a real photograph needs it for badge legibility.
+            The placeholder is already a light ground with dark type on it. */}
+        {poster && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/45 to-transparent" />
+        )}
 
         {category && poster ? (
           <span

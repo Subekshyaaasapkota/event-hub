@@ -5,37 +5,27 @@ import {
   Calendar,
   MapPin,
   Clock,
-  Users,
   ExternalLink,
   ChevronLeft,
   Share2,
   QrCode,
-  Info,
   Building2,
   Mail,
   CheckCircle2,
   Globe,
+  X,
   Facebook,
   Instagram,
   Twitter,
   Github,
   Linkedin,
-  Youtube,
 } from "lucide-react";
 import QRCode from "qrcode";
-import Navbar from "../../components/common/Navbar";
 import Footer from "../../components/common/Footer";
 import CountdownTimer from "../../components/common/CountdownTimer";
 import useEvents from "../../hooks/useEvents";
 import useAuth from "../../hooks/useAuth";
-
-// Normalize poster URLs
-const normalizePoster = (poster) => {
-  if (!poster) return null;
-  if (poster.startsWith("http")) return poster;
-  const BASE_URL = import.meta.env.VITE_BASE_API_URL || "http://localhost:5000";
-  return `${BASE_URL}${poster}`;
-};
+import { getEventPoster, onPosterError } from "../../utils/imageUrl";
 
 const EventDetails = () => {
   const { id } = useParams();
@@ -75,17 +65,50 @@ const EventDetails = () => {
   loadEvent();
   }, [id, user, fetchEventById, fetchMyRegistrations]); // only re-runs when URL id or user changes
 
-  useEffect(() => {
-  if (!showQrModal || !event) return;
+useEffect(() => {
+    if (!showQrModal || !event) return;
 
-  const currentUrl = window.location.href;
-  QRCode.toDataURL(currentUrl, { width: 300, margin: 2 })
-  .then((dataUrl) => setQrDataUrl(dataUrl))
-  .catch((err) => {
-  console.error("QRCode generation failed:", err);
-  setQrDataUrl("");
-  });
+    const currentUrl = window.location.href;
+    QRCode.toDataURL(currentUrl, { width: 300, margin: 2 })
+    .then((dataUrl) => setQrDataUrl(dataUrl))
+    .catch((err) => {
+      console.error("QRCode generation failed:", err);
+      setQrDataUrl("");
+    });
   }, [showQrModal, event]);
+
+  // Escape closes the dialog. It had no way out apart from the close button,
+  // and no backdrop click either.
+  useEffect(() => {
+    if (!showQrModal) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setShowQrModal(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showQrModal]);
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    // The clipboard API is unavailable outside a secure context, so fall back
+    // to the platform share sheet and finally to a manual prompt.
+    try {
+      if (!navigator.clipboard) throw new Error("clipboard unavailable");
+      await navigator.clipboard.writeText(url);
+      toast.success("Event link copied.");
+    } catch {
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: event?.title, url });
+          return;
+        } catch {
+          // The user dismissed the share sheet, so nothing to report.
+        }
+      }
+      window.prompt("Copy this link", url);
+    }
+  };
+
 
   const formatDate = (dateString) => {
   if (!dateString) return "TBD";
@@ -105,36 +128,62 @@ const EventDetails = () => {
   });
   };
 
-  if (loading)
-  return (
-  <div className="min-h-screen flex items-center justify-center bg-slate-50">
-  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
-  </div>
-  );
+if (loading)
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-paper">
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex flex-col items-center gap-3"
+      >
+        <span className="h-8 w-8 animate-spin rounded-full border-2 border-stone-300 border-t-ink" />
+        <span className="text-sm text-stone-500">Loading event</span>
+      </div>
+      </div>
+    );
 
   if (error)
-  return (
-  <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
-  <div className="bg-red-50 text-red-500 p-6 rounded-2xl border border-red-100 font-medium">
-  {error}
-  </div>
-  <button
-  onClick={() => navigate("/events")}
-  className="flex items-center gap-2 text-indigo-600 font-semibold hover:underline"
-  >
-  <ChevronLeft size={20} /> Back to Events
-  </button>
-  </div>
-  );
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-paper px-6">
+      <div
+        role="alert"
+        className="rounded-xl border border-red-200 bg-red-50 px-6 py-4 font-medium text-red-700"
+      >
+        {error}
+      </div>
+      <button
+        onClick={() => navigate("/events")}
+        className="group flex cursor-pointer items-center gap-2 rounded-lg text-sm font-semibold text-ink transition-colors hover:text-indigo-700"
+      >
+        <ChevronLeft
+          size={18}
+          className="transition-transform duration-200 group-hover:-translate-x-0.5"
+        />
+        Back to all events
+      </button>
+      </div>
+    );
 
   if (!event) return null;
 
-  const totalCapacity = event.capacity || event.participantCount || 100;
-  const currentParticipants = event.currentParticipants || 0;
-  const availableSeats = totalCapacity - currentParticipants;
-  const occupancyPercent = totalCapacity
-  ? Math.round((currentParticipants / totalCapacity) * 100)
-  : 0;
+  /*
+   * Capacity is optional in the schema. The previous version defaulted it to
+   * 100 and let availableSeats go negative on an overbooked event, so it could
+   * report "-4 Available Seats". When the real figure is unknown the panel now
+   * says so rather than inventing one.
+   */
+  const totalCapacity = event.capacity ?? event.participantCount ?? null;
+  const currentParticipants = event.currentParticipants ?? 0;
+  const hasCapacity = Number.isFinite(totalCapacity) && totalCapacity > 0;
+  const availableSeats = hasCapacity
+    ? Math.max(totalCapacity - currentParticipants, 0)
+    : null;
+  const occupancyPercent = hasCapacity
+    ? Math.min(100, Math.round((currentParticipants / totalCapacity) * 100))
+    : 0;
+  const isSoldOut =
+    hasCapacity && availableSeats === 0 && event.registrationType === "system";
+
 
   // Check if user is already registered
   const isAlreadyRegistered = myRegistrations?.some(
@@ -145,398 +194,422 @@ const EventDetails = () => {
   const isDeadlinePassed = event.deadline && new Date(event.deadline) < new Date();
 
   return (
-  <div className="flex flex-col min-h-screen bg-slate-50/50">
-  {/* <Navbar /> */}
+<div className="flex min-h-screen flex-col bg-paper">
+      <main className="flex-1">
+        <div className="relative overflow-hidden pb-12 pt-24 lg:pb-20 lg:pt-32">
+          <div className="mx-auto max-w-6xl px-6">
 
-  <main className="flex-1">
-  <div className="relative pt-24 pb-12 lg:pt-32 lg:pb-20 overflow-hidden">
-  <div className="absolute inset-0 bg-linear-to-b from-indigo-600/5 to-transparent -z-10"></div>
+<button
+      onClick={() => navigate("/events")}
+      className="group mb-6 flex cursor-pointer items-center gap-2 text-sm font-medium text-stone-600 transition-colors duration-200 hover:text-ink"
+    >
+      <span className="flex h-8 w-8 items-center justify-center rounded-full border border-hairline bg-white transition-colors duration-200 group-hover:border-stone-300">
+        <ChevronLeft
+          size={16}
+          className="transition-transform duration-200 ease-out group-hover:-translate-x-0.5"
+        />
+      </span>
+      Back to all events
+    </button>
 
-  <div className="max-w-7xl mx-auto px-6">
-  <button
-  onClick={() => navigate("/events")}
-  className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-colors mb-6 group"
-  >
-  <div className="bg-white p-2 rounded-full shadow-sm group-hover:shadow-md transition-all">
-  <ChevronLeft size={18} />
-  </div>
-  <span className="font-medium text-sm">Back to all events</span>
-  </button>
 
   <div className="grid lg:grid-cols-12 gap-12 items-start">
   {/* Left Column */}
   <div className="lg:col-span-8 space-y-8">
-  <div className="relative aspect-video rounded-3xl overflow-hidden shadow-2xl border-4 border-white">
-  {event.poster ? (
-  <img
-  src={normalizePoster(event.poster)}
-  alt={event.title}
-  className="w-full h-full object-cover"
-  />
-  ) : (
-  <div className="w-full h-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-6xl font-bold">
-  {event.title?.[0]}
-  </div>
-  )}
-  <div className="absolute top-6 left-6">
-  <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/20">
-  <CountdownTimer targetDate={event.eventDate} />
-  </div>
-  </div>
-  </div>
+<div className="relative aspect-video overflow-hidden rounded-2xl border border-hairline bg-stone-200 shadow-[0_20px_45px_-28px_rgba(17,17,20,0.35)]">
+          {/* Real poster when there is one, otherwise the drawn category
+              placeholder. onError catches a poster URL that resolves but 404s,
+              which previously left a broken image icon in the hero. */}
+          <img
+            src={getEventPoster(event)}
+            alt={`Poster for ${event.title}`}
+            className="h-full w-full object-cover"
+            onError={(e) => onPosterError(event, e.currentTarget)}
+          />
+          <div className="absolute left-5 top-5">
+            <CountdownTimer targetDate={event.eventDate} />
+          </div>
+        </div>
 
-  <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
-  <div className="flex flex-wrap gap-3 mb-6">
-  <span className="bg-indigo-50 text-indigo-600 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border border-indigo-100">
-  {event.category}
-  </span>
-  <span
-  className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border ${event.isPaid && event.price > 0
-  ? "bg-green-50 text-green-600 border-green-100"
-  : "bg-emerald-50 text-emerald-600 border-emerald-100"
-  }`}
-  >
-  {event.isPaid && event.price > 0
-  ? `Rs. ${event.price}`
-  : "Free Event"}
-  </span>
-  </div>
 
-  <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-slate-900 mb-6 leading-tight">
-  {event.title}
-  </h1>
+<div className="rounded-2xl border border-hairline bg-white p-8">
+        <div className="mb-6 flex flex-wrap gap-2">
+          <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-ink">
+            {event.category}
+          </span>
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+              event.isPaid && event.price > 0
+                ? "border-green-200 bg-green-50 text-green-800"
+                : "border-stone-200 bg-stone-50 text-stone-700"
+            }`}
+          >
+            {event.isPaid && event.price > 0 ? `Rs. ${event.price}` : "Free event"}
+          </span>
+        </div>
 
-  <div className="grid sm:grid-cols-2 gap-6 pb-8 border-b border-slate-50">
-  <div className="flex items-start gap-4">
-  <div className="bg-indigo-50 p-3 rounded-2xl text-indigo-600 mt-1">
-  <Calendar size={20} />
-  </div>
-  <div>
-  <p className="text-sm font-bold text-slate-400 uppercase tracking-wide">
-  Date & Time
-  </p>
-  <p className="text-slate-700 font-semibold">
-  {formatDate(event.eventDate)}
-  </p>
-  <p className="text-slate-500 text-sm italic">
-  Starting at {formatTime(event.eventDate)}
-  </p>
-  </div>
-  </div>
-  <div className="flex items-start gap-4">
-  <div
-  className={`p-3 rounded-2xl mt-1 ${event.eventType === "online"
-  ? "bg-blue-50 text-blue-600"
-  : "bg-indigo-50 text-indigo-600"
-  }`}
-  >
-  {event.eventType === "online" ? (
-  <Globe size={20} />
-  ) : (
-  <MapPin size={20} />
-  )}
-  </div>
-  <div>
-  <p className="text-sm font-bold text-slate-400 uppercase tracking-wide">
-  {event.eventType === "online"
-  ? "Event Type"
-  : "Location"}
-  </p>
-  {event.eventType === "online" ? (
-  <>
-  <p className="text-slate-700 font-semibold text-lg">
-  Online Event
-  </p>
-  <p className="text-slate-500 text-sm mt-1">
-  Join from anywhere, {event.district}
-  </p>
-  </>
-  ) : (
-  <>
-  <p className="text-slate-700 font-semibold">
-  {event.district}
-  </p>
-  <p className="text-slate-500 text-sm">
-  {event.venue || "To be announced"}
-  </p>
-  {event.googleMapUrl && (
-  <a
-  href={event.googleMapUrl}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="text-indigo-600 text-xs font-medium hover:underline mt-1 inline-block"
-  >
-  View on Maps
-  </a>
-  )}
-  </>
-  )}
-  </div>
-  </div>
-  </div>
+        <h1 className="mb-6 font-display text-3xl font-semibold leading-tight text-ink md:text-4xl">
+          {event.title}
+        </h1>
 
-  <div className="pt-8">
-  <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-  <Info size={20} className="text-indigo-600" /> Description
-  </h2>
-  <p className="text-slate-600 leading-relaxed">
-  {event.description ||
-  "No description provided for this event."}
-  </p>
-  </div>
+        <div className="grid gap-6 border-b border-hairline pb-8 sm:grid-cols-2">
+          <div className="flex items-start gap-4">
+            <div className="mt-0.5 rounded-xl bg-stone-100 p-3 text-ink-soft">
+              <Calendar size={20} />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
+                Date and time
+              </p>
+              <p className="font-semibold text-ink">{formatDate(event.eventDate)}</p>
+              <p className="text-sm text-stone-600">Starts at {formatTime(event.eventDate)}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4">
+            <div className="mt-0.5 rounded-xl bg-stone-100 p-3 text-ink-soft">
+              {event.eventType === "online" ? <Globe size={20} /> : <MapPin size={20} />}
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
+                {event.eventType === "online" ? "Format" : "Location"}
+              </p>
+              {event.eventType === "online" ? (
+                <>
+                  <p className="font-semibold text-ink">Online event</p>
+                  {event.district && (
+                    <p className="text-sm text-stone-600">
+                      Organised from {event.district}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="font-semibold text-ink">
+                    {event.district || "Location to be announced"}
+                  </p>
+                  {event.venue && <p className="text-sm text-stone-600">{event.venue}</p>}
+                  {event.googleMapUrl && (
+                    <a
+                      href={event.googleMapUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-ink underline decoration-stone-300 underline-offset-2 transition-colors hover:text-indigo-700 hover:decoration-indigo-300"
+                    >
+                      View on Maps
+                      <ExternalLink size={13} />
+                    </a>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
 
-  {event.tags?.length > 0 && (
-  <div className="pt-8">
-  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">
-  Tags
-  </h3>
-  <div className="flex flex-wrap gap-2">
-  {event.tags.map((tag, index) => (
-  <span
-  key={index}
-  className="bg-slate-50 text-slate-600 px-3 py-1 rounded-full text-xs font-medium"
-  >
-  #{tag}
-  </span>
-  ))}
-  </div>
-  </div>
-  )}
-  </div>
+        <div className="pt-8">
+          <h2 className="mb-4 font-display text-xl font-semibold text-ink">Description</h2>
+          <p className="max-w-[68ch] leading-relaxed text-stone-600">
+            {event.description || "No description was provided for this event."}
+          </p>
+        </div>
+
+        {event.tags?.length > 0 && (
+          <div className="pt-8">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-stone-500">
+              Topics
+            </h3>
+            <ul className="flex flex-wrap gap-2">
+              {event.tags.map((tag, index) => (
+                <li
+                  key={index}
+                  className="rounded-full bg-stone-50 px-3 py-1 text-xs font-medium text-stone-600"
+                >
+                  {tag}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
   </div>
 
   {/* Right Column */}
   <div className="lg:col-span-4 space-y-8 sticky top-24">
-  <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-100">
-  <div className="space-y-6">
-  <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
-  <div className="flex items-center gap-3">
-  <Users size={20} className="text-indigo-600" />
-  <div>
-  <p className="text-lg font-bold text-slate-800">
-  {availableSeats}
-  </p>
-  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-  Available Seats
-  </p>
-  </div>
-  </div>
-  <div className="text-right">
-  <p className="text-lg font-bold text-slate-800">
-  {totalCapacity}
-  </p>
-  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-  Total
-  </p>
-  </div>
-  </div>
+<div className="rounded-2xl border border-hairline bg-white p-8">
+          {hasCapacity ? (
+            <>
+              <div className="flex items-baseline justify-between">
+                <div>
+                  <p className="font-display text-3xl font-semibold text-ink tabular-nums">
+                    {availableSeats}
+                  </p>
+                  <p className="text-sm font-medium text-stone-500">
+                    seats available
+                  </p>
+                </div>
+                <p className="text-sm text-stone-500 tabular-nums">
+                  {currentParticipants} of {totalCapacity} filled
+                </p>
+              </div>
 
-  <div className="space-y-2">
-  <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-  <div
-  className={`h-full transition-all duration-1000 rounded-full ${occupancyPercent > 90
-  ? "bg-rose-500"
-  : occupancyPercent > 70
-  ? "bg-orange-500"
-  : "bg-indigo-600"
-  }`}
-  style={{ width: `${occupancyPercent}%` }}
-  ></div>
-  </div>
-  <p className="text-xs text-center text-slate-500 font-medium">
-  {occupancyPercent}% of seats already reserved
-  </p>
-  </div>
+              <div className="mt-4">
+                <div
+                  className="h-1.5 w-full overflow-hidden rounded-full bg-stone-200"
+                  role="img"
+                  aria-label={`${occupancyPercent}% of ${totalCapacity} seats filled`}
+                >
+                  <div
+                    className={`h-full rounded-full transition-[width] duration-500 ease-out ${
+                      isSoldOut
+                        ? "bg-red-600"
+                        : occupancyPercent >= 70
+                        ? "bg-amber-600"
+                        : "bg-ink"
+                    }`}
+                    style={{
+                      width: `${Math.max(occupancyPercent, currentParticipants > 0 ? 4 : 0)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-stone-500">
+              This event has no seat limit, or none has been set.
+            </p>
+          )}
 
-  {event.deadline && (
-  <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-3">
-  <Clock size={18} className="text-amber-500 mt-0.5" />
-  <div>
-  <p className="text-sm font-bold text-amber-600">
-  Registration Deadline
-  </p>
-  <p className="text-xs text-amber-500 font-medium">
-  {formatDate(event.deadline)}
-  </p>
-  </div>
-  </div>
-  )}
+          {event.deadline && (
+            <div className="mt-6 flex items-start gap-3 rounded-xl bg-stone-50 p-4">
+              <Clock size={17} className="mt-0.5 shrink-0 text-stone-500" />
+              <div>
+                <p className="text-sm font-semibold text-ink">
+                  Registration deadline
+                </p>
+                <p className="text-sm text-stone-600">
+                  {isDeadlinePassed
+                    ? "Closed"
+                    : `${formatDate(event.deadline)} at ${formatTime(event.deadline)}`}
+                </p>
+              </div>
+            </div>
+          )}
 
-  {/* Registration Fee & Action Section */}
-  <div className="pt-8 border-t border-slate-50 space-y-12">
-  <div className="flex justify-between items-center">
-  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registration Fee</span>
-  <div className="bg-indigo-50 px-6 py-3 rounded-2xl border border-indigo-100 flex items-center justify-center min-w-[120px]">
-  <span className="text-sm font-black text-indigo-600 uppercase tracking-widest">
-  {event.isPaid && event.price > 0 ? `Rs. ${event.price}` : "Free"}
-  </span>
-  </div>
-  </div>
+          <div className="mt-8 border-t border-hairline pt-8">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-stone-500">
+                Registration fee
+              </span>
+              <span className="font-display text-lg font-semibold text-ink">
+                {event.isPaid && event.price > 0 ? `Rs. ${event.price}` : "Free"}
+              </span>
+            </div>
 
-  <button
-  className={`w-full py-6 rounded-full font-black uppercase tracking-[0.2em] text-[11px] transition-all duration-500 
-  ${isAlreadyRegistered && !isDeadlinePassed
-  ? "bg-indigo-50 text-indigo-600 border border-indigo-100 cursor-not-allowed shadow-none"
-  : isDeadlinePassed || (availableSeats <= 0 && event.registrationType === "system")
-  ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
-  : "bg-linear-to-r from-indigo-600 to-purple-700 text-white shadow-2xl shadow-indigo-200 hover:scale-[1.02] active:scale-95"
-  }`}
-  onClick={() => {
-  if (
-  event.registrationType === "google_form" &&
-  event.googleFormUrls?.[0]
-  ) {
-  window.open(event.googleFormUrls[0], "_blank");
-  } else {
-  navigate(`/register-for-event/${event._id}`);
-  }
-  }}
-  disabled={
-  isAlreadyRegistered ||
-  isDeadlinePassed ||
-  (availableSeats <= 0 &&
-  event.registrationType === "system")
-  }
-  >
-  {isAlreadyRegistered
-  ? "Registration Completed"
-  : isDeadlinePassed
-  ? "Registration Closed"
-  : event.registrationType === "google_form"
-  ? "Register via Link"
-  : availableSeats > 0
-  ? "Book My Seat Now"
-  : "Event Full"}
-  </button>
+            <button
+              type="button"
+              className={`mt-6 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl px-6 py-4
+                text-sm font-semibold transition-colors duration-200 ${
+                  isAlreadyRegistered
+                    ? "cursor-not-allowed border border-stone-200 bg-stone-50 text-stone-500"
+                    : isDeadlinePassed || isSoldOut
+                    ? "cursor-not-allowed border border-stone-200 bg-stone-100 text-stone-500"
+                    : "bg-ink text-white hover:bg-ink-soft active:bg-black"
+                }`}
+              onClick={() => {
+                if (
+                  event.registrationType === "google_form" &&
+                  event.googleFormUrls?.[0]
+                ) {
+                  window.open(event.googleFormUrls[0], "_blank", "noopener,noreferrer");
+                } else {
+                  navigate(`/register-for-event/${event._id}`);
+                }
+              }}
+              disabled={isAlreadyRegistered || isDeadlinePassed || isSoldOut}
+            >
+              {isAlreadyRegistered
+                ? "You are registered"
+                : isDeadlinePassed
+                ? "Registration closed"
+                : event.registrationType === "google_form"
+                ? "Register via link"
+                : isSoldOut
+                ? "Event full"
+                : "Register for this event"}
+            </button>
 
-  <div className="flex justify-center gap-10 pt-2">
-  <button
-  className="flex items-center gap-2.5 text-[9px] font-black text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-[0.15em]"
-  onClick={() => setShowQrModal(true)}
-  >
-  <QrCode size={16} /> QR Info
-  </button>
+            <div className="mt-4 flex justify-center gap-6">
+              <button
+                type="button"
+                onClick={() => setShowQrModal(true)}
+                className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-stone-600 transition-colors duration-200 hover:text-ink"
+              >
+                <QrCode size={15} />
+                Show QR code
+              </button>
 
-  <button
-  className="flex items-center gap-2.5 text-[9px] font-black text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-[0.15em]"
-  onClick={async () => {
-  await navigator.clipboard.writeText(
-  window.location.href,
-  );
-  toast.success("Copied!");
-  }}
-  >
-  <Share2 size={16} /> Share
-  </button>
-  </div>
-  </div>
-  </div>
-  </div>
+              <button
+                type="button"
+                onClick={handleShare}
+                className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-stone-600 transition-colors duration-200 hover:text-ink"
+              >
+                <Share2 size={15} />
+                Share
+              </button>
+            </div>
+          </div>
+        </div>
 
-  {showQrModal && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-  <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-  <button
-  className="absolute top-3 right-3 rounded-full p-2 text-slate-500 hover:bg-slate-100"
-  onClick={() => setShowQrModal(false)}
-  >
-  
-  </button>
-  <h3 className="text-lg font-bold text-slate-900">
-  Share Event via QR
-  </h3>
-  <p className="text-sm text-slate-500 mt-1">
-  Scan this code to open the event page.
-  </p>
-  {qrDataUrl ? (
-  <div className="mt-4 flex flex-col items-center">
-  <img
-  src={qrDataUrl}
-  alt="Event QR code"
-  className="h-52 w-52 rounded-lg border border-slate-200"
-  />
-  <a
-  href={qrDataUrl}
-  download={`${event.title}-EventHub-qr.png`}
-  className="mt-4 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700"
-  >
-  Download QR
-  </a>
-  </div>
-  ) : (
-  <p className="mt-4 text-sm text-slate-500">
-  Generating QR code...
-  </p>
-  )}
-  </div>
-  </div>
-  )}
 
-  {event.organizer && (
-  <div className="bg-indigo-600 rounded-[2.5rem] p-10 shadow-2xl shadow-indigo-200 overflow-hidden relative group mt-8 text-white">
-  <div className="relative z-10">
-  <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-10">Organized By</p>
+{showQrModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowQrModal(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="qr-modal-title"
+            className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+          >
+            {/* This button was rendered empty: no icon, no label, so it was
+                invisible and announced to a screen reader as an unlabelled
+                button. It now has both. */}
+            <button
+              type="button"
+              aria-label="Close QR code dialog"
+              onClick={() => setShowQrModal(false)}
+              className="absolute right-3 top-3 cursor-pointer rounded-lg p-2 text-stone-500 transition-colors duration-200 hover:bg-stone-100 hover:text-ink"
+            >
+              <X size={18} />
+            </button>
 
-  <div className="flex items-start gap-6 mb-8">
-  <div className="w-16 h-16 rounded-3xl bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20">
-  <Building2 size={32} />
-  </div>
-  <div className="flex-1">
-  <h4 className="text-xl font-black text-white tracking-tighter mb-2">
-  {event.organizer.name}
-  </h4>
-  <div className="flex items-center gap-2 text-[10px] font-black text-emerald-400 uppercase tracking-widest">
-  <CheckCircle2 size={12} /> Verified Legacy
-  </div>
-  </div>
-  </div>
+            <h3 id="qr-modal-title" className="font-display text-lg font-semibold text-ink">
+              Share this event
+            </h3>
+            <p className="mt-1 text-sm text-stone-600">
+              Scan this code to open the event page on another device.
+            </p>
 
-  <div className="w-full h-px bg-white/10 mb-8" />
+            {qrDataUrl ? (
+              <div className="mt-5 flex flex-col items-center">
+                <img
+                  src={qrDataUrl}
+                  alt={`QR code linking to ${event.title}`}
+                  className="h-52 w-52 rounded-lg border border-hairline"
+                />
+                <a
+                  href={qrDataUrl}
+                  download={`${event.title}-EventHub-qr.png`}
+                  className="mt-4 inline-flex cursor-pointer items-center rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-ink-soft"
+                >
+                  Download QR
+                </a>
+              </div>
+            ) : (
+              <p role="status" className="mt-5 text-sm text-stone-500">
+                Generating QR code...
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
-  <div className="space-y-4 mb-8">
-  {event.organizer.email && (
-  <div className="flex items-center gap-4 text-sm font-bold text-white/80">
-  <Mail size={18} className="text-white/40" />
-  <span>{event.organizer.email}</span>
-  </div>
-  )}
-  {event.organizer.website && (
-  <div className="flex items-center gap-4 text-sm font-bold text-white/80">
-  <Globe size={18} className="text-white/40" />
-  <a href={event.organizer.website} target="_blank" rel="noreferrer" className="hover:text-white transition-colors">{event.organizer.website}</a>
-  </div>
-  )}
-  </div>
 
-  {/* Socials Link Icons */}
-  <div className="flex flex-wrap gap-2 pt-4">
-  {[
-  { icon: Facebook, url: event.organizer.facebook },
-  { icon: Instagram, url: event.organizer.instagram },
-  { icon: Twitter, url: event.organizer.twitter },
-  { icon: Github, url: event.organizer.github },
-  { icon: Linkedin, url: event.organizer.linkedin }
-  ].filter(s => s.url).map((social, i) => {
-  const Icon = social.icon;
-  return (
-  <a key={i} href={social.url} target="_blank" rel="noreferrer" className="w-11 h-11 bg-white/10 hover:bg-white text-white hover:text-indigo-600 rounded-xl flex items-center justify-center transition-all duration-300 border border-white/5">
-  <Icon size={18} />
-  </a>
-  );
-  })}
-  </div>
+{event.organizer && (
+        <div className="relative mt-8 overflow-hidden rounded-2xl bg-ink p-8 text-white">
+          <div className="relative z-10">
+            <p className="mb-8 text-xs font-semibold uppercase tracking-wide text-stone-400">
+              Organised by
+            </p>
 
-  <button
-  onClick={() =>
-  navigate(`/events?organizer=${event.organizer._id}`)
-  }
-  className="w-full mt-10 py-5 bg-white/10 hover:bg-white text-white hover:text-indigo-600 border border-white/20 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-2"
-  >
-  View All Their Events <ExternalLink size={14} />
-  </button>
-  </div>
-  </div>
-  )}
+            <div className="mb-8 flex items-start gap-5">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/10">
+                <Building2 size={26} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="font-display text-xl font-semibold">
+                  {event.organizer.name}
+                </h4>
+                {/* Previously a hardcoded "Verified Legacy" badge that said
+                    nothing true about this particular club. It now reflects the
+                    stored verification flag, and says nothing when unset. */}
+                {event.organizer.isVerified ? (
+                  <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-emerald-300">
+                    <CheckCircle2 size={13} />
+                    Verified club
+                  </span>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="mb-8 h-px w-full bg-white/10" />
+
+            <div className="space-y-3">
+              {event.organizer.email && (
+                <a
+                  href={`mailto:${event.organizer.email}`}
+                  className="flex items-center gap-3 text-sm text-stone-300 transition-colors duration-200 hover:text-white"
+                >
+                  <Mail size={16} className="shrink-0 text-stone-500" />
+                  <span className="truncate">{event.organizer.email}</span>
+                </a>
+              )}
+              {event.organizer.website && (
+                <a
+                  href={event.organizer.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 text-sm text-stone-300 transition-colors duration-200 hover:text-white"
+                >
+                  <Globe size={16} className="shrink-0 text-stone-500" />
+                  <span className="truncate">{event.organizer.website}</span>
+                </a>
+              )}
+            </div>
+
+            {/* These were five icon-only links with no accessible name, so a
+                screen reader announced five identical bare links. */}
+            <ul className="mt-6 flex flex-wrap gap-2">
+              {[
+                { icon: Facebook, url: event.organizer.facebook, label: "Facebook" },
+                { icon: Instagram, url: event.organizer.instagram, label: "Instagram" },
+                { icon: Twitter, url: event.organizer.twitter, label: "Twitter" },
+                { icon: Github, url: event.organizer.github, label: "GitHub" },
+                { icon: Linkedin, url: event.organizer.linkedin, label: "LinkedIn" },
+              ]
+                .filter((social) => social.url)
+                .map(({ icon: Icon, url, label }, i) => (
+                  <li key={i}>
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`${event.organizer.name} on ${label}`}
+                      className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-white/15
+                        bg-white/10 transition-colors duration-200 hover:bg-white hover:text-ink"
+                    >
+                      <Icon size={17} />
+                    </a>
+                  </li>
+                ))}
+            </ul>
+
+            <button
+              type="button"
+              onClick={() => navigate(`/events?organizer=${event.organizer._id}`)}
+              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/20
+                px-5 py-3.5 text-sm font-semibold transition-colors duration-200 hover:bg-white hover:text-ink"
+            >
+              View all their events
+              <ExternalLink size={15} />
+            </button>
+          </div>
+        </div>
+      )}
+
   </div>
   </div>
   </div>

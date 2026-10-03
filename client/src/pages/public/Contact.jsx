@@ -63,48 +63,64 @@ const Contact = () => {
   };
 
   const fieldClass = (hasError) =>
-    `w-full px-4 py-3 bg-slate-50 border rounded-2xl outline-none transition-all ${
+    `w-full rounded-xl border bg-white px-4 py-3 text-ink outline-none transition-colors duration-200 placeholder:text-stone-400 ${
       hasError
-        ? "border-red-300 focus:ring-4 focus:ring-red-50"
-        : "border-slate-200 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500"
+        ? "border-red-400 focus:border-red-500"
+        : "border-stone-300 hover:border-stone-400 focus:border-ink"
     }`;
 
-  return (
-  <div className="flex flex-col min-h-screen bg-[#F8FAFC]">
-  {/* <Navbar /> */}
+  // Error text was rendered as a bare <p> with no link to its input, so a
+  // screen reader never announced it and the field itself did not report an
+  // invalid state. Each message now has an id that its input points at.
+  const errorProps = (name) =>
+    errors[name]
+      ? { "aria-invalid": true, "aria-describedby": `contact-${name}-error` }
+      : {};
 
+  // A plain render helper, not a nested component. Declared as a component it
+  // would unmount and remount on every keystroke.
+  const renderError = (name) =>
+    errors[name] ? (
+      <p
+        id={`contact-${name}-error`}
+        role="alert"
+        className="text-xs font-medium text-red-700"
+      >
+        {errors[name]}
+      </p>
+    ) : null;
+
+  return (
+  <div className="flex min-h-screen flex-col bg-paper">
   <main className="flex-1">
-  {/* Header Section */}
-  <section className="max-w-5xl mx-auto px-6 pt-20 pb-12 text-center">
-  <h1 className="text-4xl md:text-5xl font-extrabold text-[#4F46E5] tracking-tight">
-  Get in Touch
+  <section className="mx-auto max-w-5xl px-6 pb-12 pt-20">
+  <h1 className="font-display text-4xl font-semibold tracking-tight text-ink md:text-5xl">
+  Get in touch
   </h1>
-  <p className="mt-4 text-[#475569] max-w-2xl mx-auto text-lg">
-  Have questions about EventHub? Whether you're an organizer or a
-  student, we're here to help you bridge the gap.
+  <p className="mt-4 max-w-2xl text-lg leading-relaxed text-stone-600">
+  Questions about an event, a club registration, or your account? Send us a
+  message and we will reply by email.
   </p>
   </section>
 
   <section className="max-w-6xl mx-auto px-6 py-12 grid md:grid-cols-5 gap-12 mb-20">
   {/* Contact Information Cards (2 Columns) */}
   <div className="md:col-span-2 space-y-6">
-  <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-  <h2 className="text-2xl font-bold text-slate-900 mb-6">
-  Contact Information
+  <div className="rounded-2xl border border-hairline bg-white p-8">
+  <h2 className="mb-6 font-display text-xl font-semibold text-ink">
+  Contact details
   </h2>
 
   <div className="space-y-6">
   <div className="flex items-start gap-4">
-  <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-  <Mail size={24} />
+  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-ink-soft">
+  <Mail size={20} />
   </div>
   <div className="min-w-0">
-  <p className="text-sm font-bold text-slate-900">
-  Email us at
-  </p>
+  <h3 className="text-sm font-semibold text-ink">Email</h3>
   <a
   href="mailto:subekshya@sapkota.com"
-  className="text-slate-600 hover:text-indigo-600 transition-colors break-all"
+  className="text-stone-600 underline decoration-stone-300 underline-offset-2 transition-colors duration-200 hover:text-indigo-700 hover:decoration-indigo-300"
   >
   subekshya@sapkota.com
   </a>
@@ -112,91 +128,91 @@ const Contact = () => {
   </div>
 
   <div className="flex items-start gap-4">
-  <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-  <Phone size={24} />
+  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-ink-soft">
+  <Phone size={20} />
   </div>
   <div className="min-w-0">
-  <p className="text-sm font-bold text-slate-900">Call or WhatsApp</p>
+  <h3 className="text-sm font-semibold text-ink">Call or WhatsApp</h3>
   <a
   href="tel:+9779812345678"
-  className="text-slate-600 hover:text-indigo-600 transition-colors"
+  className="text-stone-600 underline decoration-stone-300 underline-offset-2 transition-colors duration-200 hover:text-indigo-700 hover:decoration-indigo-300"
   >
   +977 9812345678
   </a>
-  <p className="text-xs text-slate-400 font-medium mt-0.5">
+  <p className="mt-0.5 text-xs text-stone-500">
   Subekshya Sapkota, developer
   </p>
   </div>
   </div>
 
   <div className="flex items-start gap-4">
-  <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-  <MapPin size={24} />
+  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-ink-soft">
+  <MapPin size={20} />
   </div>
   <div>
-  <p className="text-sm font-bold text-slate-900">Location</p>
-  <p className="text-slate-600">Butwal, Rupandehi, Nepal</p>
+  <h3 className="text-sm font-semibold text-ink">Based in</h3>
+  <p className="text-stone-600">Butwal, Rupandehi, Nepal</p>
   </div>
   </div>
   </div>
   </div>
 
-  {/* Social Media Hint */}
-  <div className="mt-10 p-4 bg-slate-50 rounded-2xl">
-  <p className="text-sm text-slate-500 italic">
-  "We typically respond within 24 hours during working days."
+  <p className="mt-6 rounded-xl border border-hairline bg-paper px-4 py-3 text-sm text-stone-600">
+  We usually reply within a day during working hours.
   </p>
-  </div>
   </div>
 
   {/* Contact Form (3 Columns) */}
-  <div className="md:col-span-3 bg-white p-8 md:p-10 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50">
+<div className="rounded-2xl border border-hairline bg-white p-8 md:p-10 shadow-[0_18px_40px_-28px_rgba(17,17,20,0.3)]">
   <form onSubmit={handleSubmit} noValidate className="space-y-5">
-  <div className="grid md:grid-cols-2 gap-5">
+  <div className="grid gap-5 md:grid-cols-2">
   <div className="space-y-1.5">
-  <label htmlFor="contact-name" className="text-sm font-semibold text-slate-700 ml-1">
-  Your Name
+  <label htmlFor="contact-name" className="block text-sm font-semibold text-ink">
+  Your name
   </label>
   <input
   id="contact-name"
   type="text"
   name="name"
+  autoComplete="name"
+  required
   value={form.name}
   onChange={handleChange}
   placeholder="Your name"
   className={fieldClass(errors.name)}
+  {...errorProps("name")}
   />
-  {errors.name && (
-  <p className="text-xs text-red-500 font-medium ml-1">{errors.name}</p>
-  )}
+  {renderError("name")}
   </div>
   <div className="space-y-1.5">
-  <label htmlFor="contact-email" className="text-sm font-semibold text-slate-700 ml-1">
-  Email Address
+  <label htmlFor="contact-email" className="block text-sm font-semibold text-ink">
+  Email address
   </label>
   <input
   id="contact-email"
   type="email"
   name="email"
+  autoComplete="email"
+  required
   value={form.email}
   onChange={handleChange}
   placeholder="you@example.com"
   className={fieldClass(errors.email)}
+  {...errorProps("email")}
   />
-  {errors.email && (
-  <p className="text-xs text-red-500 font-medium ml-1">{errors.email}</p>
-  )}
+  {renderError("email")}
   </div>
   </div>
 
   <div className="space-y-1.5">
-  <label htmlFor="contact-subject" className="text-sm font-semibold text-slate-700 ml-1">
-  Subject
+  <label htmlFor="contact-subject" className="block text-sm font-semibold text-ink">
+  Subject <span className="font-normal text-stone-500">(optional)</span>
   </label>
   <input
   id="contact-subject"
   type="text"
   name="subject"
+  maxLength={120}
   value={form.subject}
   onChange={handleChange}
   placeholder="How can we help?"
@@ -205,40 +221,47 @@ const Contact = () => {
   </div>
 
   <div className="space-y-1.5">
-  <label htmlFor="contact-message" className="text-sm font-semibold text-slate-700 ml-1">
+  <label htmlFor="contact-message" className="block text-sm font-semibold text-ink">
   Message
   </label>
   <textarea
   id="contact-message"
   rows="5"
   name="message"
+  required
+  maxLength={2000}
   value={form.message}
   onChange={handleChange}
-  placeholder="Tell us more about your inquiry..."
+  placeholder="Tell us what you need help with."
   className={`${fieldClass(errors.message)} resize-none`}
+  {...errorProps("message")}
   ></textarea>
-  {errors.message && (
-  <p className="text-xs text-red-500 font-medium ml-1">{errors.message}</p>
-  )}
+  {renderError("message")}
   </div>
 
   <button
   type="submit"
   disabled={sending}
-  className={`w-full md:w-max px-8 py-4 font-bold rounded-2xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 group ${
-  sending
-  ? "bg-indigo-300 text-white cursor-not-allowed shadow-none"
-  : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-100"
-  }`}
+  aria-busy={sending}
+  className={`group inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl px-8 py-3.5 text-sm font-semibold
+    transition-colors duration-200 ${sending
+      ? "cursor-not-allowed bg-stone-200 text-stone-500"
+      : "bg-ink text-white hover:bg-ink-soft active:bg-black"
+    }`}
   >
-  <span>{sending ? "Sending..." : "Send Message"}</span>
+  {sending ? "Sending..." : "Send message"}
+  {sending ? (
+  <span className="h-4 w-4 animate-spin rounded-full border-2 border-stone-400 border-t-transparent" />
+  ) : (
   <Send
-  size={18}
-  className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"
+  size={16}
+  className="transition-transform duration-200 ease-out group-hover:translate-x-0.5"
   />
+  )}
   </button>
   </form>
   </div>
+
   </section>
   </main>
 

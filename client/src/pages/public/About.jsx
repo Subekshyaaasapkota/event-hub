@@ -1,105 +1,118 @@
 import React from "react";
-import Navbar from "../../components/common/Navbar";
 import Footer from "../../components/common/Footer";
+
+const FEATURES = [
+  {
+    title: "Nationwide reach",
+    body: "Events from multiple cities and institutions across Nepal, listed in one place rather than scattered across club pages.",
+  },
+  {
+    title: "Filter by location",
+    body: "Narrow the list to your district, or search by coordinates, so nearby opportunities are the first thing you see.",
+  },
+  {
+    title: "Structured management",
+    body: "Verified clubs get the tools to publish, edit and monitor their own events, including deadlines and seat limits.",
+  },
+];
 
 const About = () => {
   return (
-  <div className="flex flex-col min-h-screen bg-[#F8FAFC]">
-  {/* <Navbar /> */}
-
+  <div className="flex min-h-screen flex-col bg-paper">
   <main className="flex-1">
-  {/* Hero Section */}
-  <section className="max-w-5xl mx-auto px-6 pt-20 pb-16 text-center">
-  <h1 className="text-4xl md:text-5xl font-bold text-[#4F46E5]">About EventHub</h1>
-  <p className="mt-6 text-[#475569] max-w-3xl mx-auto leading-relaxed">
-  EventHub is a centralized event discovery and management platform built for students across Nepal. It
-  connects students with academic, technical, cultural, and professional events happening in different cities
-  and institutions nationwide.
+  <section className="mx-auto max-w-3xl px-6 pb-14 pt-20">
+  <h1 className="font-display text-4xl font-semibold tracking-tight text-ink md:text-5xl">
+  About EventHub
+  </h1>
+  <p className="mt-6 max-w-[68ch] text-lg leading-relaxed text-stone-600">
+  EventHub is a centralised event discovery platform for students across Nepal.
+  It connects students with academic, technical, cultural and professional events
+  happening in different cities and institutions nationwide.
   </p>
   </section>
 
-  {/* Mission & How It Works */}
-  <section className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-2 gap-12">
+  <section className="mx-auto grid max-w-5xl gap-12 px-6 py-14 md:grid-cols-2">
   <div>
-  <h2 className="text-2xl font-semibold text-[#4F46E5] mb-4">Our Mission</h2>
-  <p className="text-[#475569] leading-relaxed">
-  Our mission is simple - ensure that no student misses an opportunity. By centralizing events from multiple
-  institutions and cities, EventHub makes discovering and participating in events organized, accessible, and
-  efficient.
+  <h2 className="font-display text-2xl font-semibold text-ink">
+  Our mission
+  </h2>
+  <p className="mt-4 max-w-[62ch] leading-relaxed text-stone-600">
+  Our mission is simple: no student should miss an opportunity. By centralising
+  events from multiple institutions and cities, EventHub makes discovering and
+  participating in them organised rather than chaotic.
   </p>
   </div>
 
   <div>
-  <h2 className="text-2xl font-semibold text-[#4F46E5] mb-4">How It Works</h2>
-  <p className="text-[#475569] leading-relaxed">
-  Organizers create and manage events through a dedicated dashboard, while students browse and filter events
-  based on location and interest. This structured, role-based system ensures clarity, simplicity, and smooth
-  event coordination.
+  <h2 className="font-display text-2xl font-semibold text-ink">
+  How it works
+  </h2>
+  <p className="mt-4 max-w-[62ch] leading-relaxed text-stone-600">
+  Verified clubs publish and manage events through a dedicated dashboard, while
+  students browse and filter by location and interest. The role-based split
+  keeps each side focused on what it actually needs to do.
   </p>
   </div>
   </section>
 
-  {/* Our Story */}
-  <section className="max-w-5xl mx-auto px-6 py-20 border-t border-gray-200">
-  <h2 className="text-3xl font-semibold text-[#4F46E5] text-center mb-10">Why We Built EventHub</h2>
+  <section className="border-t border-hairline py-20">
+  <div className="mx-auto max-w-3xl px-6">
+  <h2 className="font-display text-3xl font-semibold text-ink">
+  Why we built EventHub
+  </h2>
 
-  <div className="text-[#475569] leading-relaxed space-y-6 text-center md:text-left">
-  <p>
-  During our early semesters, we often missed valuable opportunities like hackathons, workshops, webinars,
-  and technical competitions. Not because they didn’t exist - but because we didn’t know about them.
+  <div className="mt-8 space-y-6 text-stone-600">
+  <p className="max-w-[68ch] leading-relaxed">
+  During our early semesters we often missed valuable opportunities like
+  hackathons, workshops, webinars and technical competitions. Not because they
+  did not exist, but because we did not know about them.
   </p>
 
-  <p>
-  Different IT clubs and student associations across Nepal were organizing amazing events, yet information
-  was scattered across multiple social media platforms. To stay updated, students had to follow and
-  regularly check each club’s social media separately - which was time-consuming and overwhelming.
+  <p className="max-w-[68ch] leading-relaxed">
+  Different IT clubs and student associations across Nepal were organising
+  excellent events, but the information was scattered across multiple social
+  media pages. To stay current, students had to follow and check each club
+  separately, which was time-consuming and easy to fall behind on.
   </p>
 
-  <p>
-  Because of this fragmented system, we missed registration deadlines and discovered events too late. We
-  realized the problem wasn’t the lack of events - it was the lack of a centralized system.
+  <p className="max-w-[68ch] leading-relaxed">
+  Because of that fragmentation we missed registration deadlines and found out
+  about events too late. The problem was not a shortage of events, it was the
+  absence of a single place to look.
   </p>
 
-  <p>
-  That personal experience became the foundation of our final year project. We envisioned a platform where
-  students across Nepal could discover all IT-related events in one place - searchable, filterable by
-  location, and organized clearly.
+  <p className="max-w-[68ch] leading-relaxed">
+  That experience became the foundation of our final year project: a platform
+  where students across Nepal can find IT events in one place, searchable and
+  filterable by location.
   </p>
 
-  <p className="font-medium text-gray-900">
-  EventHub exists to ensure that no student misses an opportunity simply because information was scattered.
+  <p className="max-w-[68ch] border-l-2 border-ink pl-5 font-display text-lg font-medium leading-relaxed text-ink">
+  EventHub exists so that no student misses an opportunity simply because the
+  information was scattered.
   </p>
+  </div>
   </div>
   </section>
 
-  {/* Core Features */}
-  <section className="bg-white border-t border-gray-200 py-20">
-  <div className="max-w-6xl mx-auto px-6 text-center">
-  <h2 className="text-3xl font-semibold text-[#4F46E5] mb-12">What Makes EventHub Different</h2>
+  <section className="border-t border-hairline bg-white py-20">
+  <div className="mx-auto max-w-5xl px-6">
+  <h2 className="font-display text-3xl font-semibold text-ink">
+  What makes EventHub different
+  </h2>
 
-  <div className="grid md:grid-cols-3 gap-10">
-  <div className="p-6">
-  <h3 className="text-lg font-semibold text-gray-900 mb-3">Nationwide Reach</h3>
-  <p className="text-[#475569] text-sm leading-relaxed">
-  Events from multiple cities and institutions across Nepal, all centralized in one accessible platform.
-  </p>
+  <dl className="mt-12 grid gap-10 md:grid-cols-3">
+  {FEATURES.map((feature) => (
+  <div key={feature.title} className="border-t border-stone-300 pt-5">
+  <dt className="font-display text-lg font-semibold text-ink">
+  {feature.title}
+  </dt>
+  <dd className="mt-3 max-w-[40ch] text-sm leading-relaxed text-stone-600">
+  {feature.body}
+  </dd>
   </div>
-
-  <div className="p-6">
-  <h3 className="text-lg font-semibold text-gray-900 mb-3">Location-Based Filtering</h3>
-  <p className="text-[#475569] text-sm leading-relaxed">
-  Students can filter events by location, helping them quickly find opportunities relevant to their
-  area.
-  </p>
-  </div>
-
-  <div className="p-6">
-  <h3 className="text-lg font-semibold text-gray-900 mb-3">Structured Event Management</h3>
-  <p className="text-[#475569] text-sm leading-relaxed">
-  Organizers get dedicated tools to create, manage, and monitor events professionally and efficiently.
-  </p>
-  </div>
-  </div>
+  ))}
+  </dl>
   </div>
   </section>
   </main>

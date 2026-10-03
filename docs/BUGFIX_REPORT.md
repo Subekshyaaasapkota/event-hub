@@ -309,7 +309,103 @@ Grotesk carries the display voice on marketing surfaces.
 
 ---
 
-## 10. Verification
+## 10. Event imagery, and the About, Contact and Event pages
+
+### Events with no poster now get a drawn placeholder
+
+The old fallback was a grey box with a generic picture glyph and the words "No
+poster uploaded". It read as an error rather than as a placeholder, and its
+caption sat at **3.86:1** against its own background, under the 4.5:1 floor.
+
+Events now fall back to a drawn composition built from the event's own category
+colour: a tinted ground, concentric arcs, and the event's initials and a short
+caption. Nine category palettes are matched by keyword, so a wall of poster-less
+events reads as distinguishable cards rather than one grey slab. It is
+deliberately geometry, not illustration, and it never invents an event name.
+
+One path now serves every case. `getEventPoster` returns the real poster when
+there is one and the placeholder otherwise, and `onPosterError` catches the third
+case, a poster URL that resolves but returns 404. Previously a broken poster URL
+on the event hero left a broken-image icon in the largest element on the page,
+and `EventCard` merely hid the broken image with `visibility: hidden`, which
+left an empty grey rectangle. `EventDetails` also carried its own private copy
+of the URL-normalising function; both now use the shared module.
+
+Building this surfaced a bug worth recording: an event titled "AI & ML Summit"
+produced invalid XML, because the `&` went into SVG text unescaped, and the
+browser then rendered a broken image. That is the exact failure the placeholder
+exists to prevent. Text is now escaped, and taking the initials from the escaped
+string instead of the raw one re-introduced the same stray ampersand, which the
+verification script caught on the first run.
+
+### The QR dialog could not be closed and announced itself as an empty button
+
+The close button on the QR dialog was rendered with **no icon and no label**. It
+was invisible on the page, and to a screen reader it was an unlabelled button
+with no name. The dialog itself had no `role="dialog"`, no `aria-modal`, no
+focus handling, and could be dismissed neither with Escape nor by clicking the
+backdrop.
+
+### Five unlabelled links and an invented badge
+
+The organizer's five social icons were icon-only anchors with no accessible
+name, so a screen reader announced five identical bare links. Each now carries
+an `aria-label` naming the club and the network.
+
+The organizer panel also displayed a hardcoded **"Verified Legacy"** badge,
+which asserted nothing true about any club. It now reflects the stored
+verification flag and says nothing when that flag is unset.
+
+### Other fixes on these pages
+
+- **Contrast.** Seven labels on the event page used `slate-400` on white, roughly
+  2.6:1, including "Date and time", "Available Seats", "Total", "Registration
+  Fee", "QR Info" and "Share". All now clear 4.5:1. The same applied to the
+  contact page's attribution line.
+- **Nine-pixel text.** "QR Info" and "Share" were set at 9px, "Registration Fee"
+  and "Organized By" at 10px, with `font-black` and wide tracking. That is below
+  any readable minimum. All are now 14px or larger with normal weight.
+- **Invented and negative seat counts.** Capacity still defaulted to 100 when the
+  field was absent, and `availableSeats` was not clamped, so an overbooked event
+  could display "-4 Available Seats". When capacity is genuinely unknown the page
+  now says so.
+- **Share could throw.** `navigator.clipboard.writeText` was awaited with no error
+  handling, and that API is unavailable outside a secure context. It now falls
+  back to the platform share sheet and then to a manual prompt.
+- **Dialog dismissal** and **`window.open`** without `noopener`, which leaves
+  `window.opener` reachable from the opened page.
+- **Form errors were invisible to assistive tech.** The contact form rendered
+  validation messages as bare paragraphs with no link to their input, and the
+  fields never reported an invalid state. Each now has an `aria-invalid`, an
+  `aria-describedby` pointing at a `role="alert"` message, plus `autocomplete`,
+  `maxLength` matching the server limits, and `aria-busy` while sending.
+- **A nested component in render.** The error message helper was declared inside
+  the component body, so it unmounted and remounted on every keystroke. It is a
+  plain render helper now.
+- **Stable hover.** The register button scaled to 1.02 and pressed to 0.95, and
+  every button on the event page lacked a pointer cursor.
+- The loading spinner had no accessible text and the error panel no `role`, so
+  both were silent. The poster gradient placeholder and a decorative top wash
+  were removed, along with a 40px corner radius on the organizer panel.
+- About was centred above `md` but left-aligned below it, mixed `gray-900` with a
+  `#475569` hex for the same role, and ran body copy past a 75-character measure
+  at wide viewports. It now uses the shared type tokens and an explicit measure.
+
+### Verification for this pass
+
+- Client ESLint: clean. Client production build: clean, 2639 modules.
+- `impeccable detect` on all five touched files: no findings.
+- All five modules confirmed to compile in the running Vite dev server, and
+  `AdminEventDetails`, the other consumer of this image module, still resolves.
+- The generated placeholder was evaluated directly against five inputs including
+  `AI & ML <Summit> "2026"`, an empty title and a missing category, and each
+  checked for well-formed XML. This is what caught the ampersand bug.
+- Audited the three pages afterwards: zero remaining `slate-400`-on-white labels,
+  zero text under 12px, and zero buttons without an explicit cursor.
+
+---
+
+## 11. Verification
 
 ### Automated
 
