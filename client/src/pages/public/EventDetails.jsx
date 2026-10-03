@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+
 import { toast } from "react-hot-toast";
 import { useParams, useNavigate } from "react-router-dom";
 import { AlertCircle, Building2, Calendar, CheckCircle2, ChevronLeft, Clock, ExternalLink, Facebook, Github, Globe, Instagram, Linkedin, Mail, MapPin, QrCode, Share2, Twitter, X } from "lucide-react";
@@ -24,8 +25,14 @@ const EventDetails = () => {
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [qrAttempt, setQrAttempt] = useState(0);
   // Focus the close button rather than the download link, so Enter cannot
-  // trigger a download before the dialog has been read.
-  const qrDialogRef = useFocusTrap(showQrModal, "[data-qr-close]");
+  // trigger a download before the dialog has been read. The trigger is passed
+  // explicitly because Safari does not focus a button on click, so capturing
+  // document.activeElement would hand focus back to <body> on macOS.
+  const qrTriggerRef = useRef(null);
+  const qrDialogRef = useFocusTrap(showQrModal, {
+    initialFocus: "[data-qr-close]",
+    returnFocusRef: qrTriggerRef,
+  });
 
   // Staggered by column so the page settles in reading order rather than all at once.
   const heroRef = useReveal({ threshold: 0.05 });
@@ -452,14 +459,16 @@ if (loading)
             </button>
 
             <div className="mt-4 flex justify-center gap-6">
-              <button
-                type="button"
-                onClick={() => setShowQrModal(true)}
-                className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-stone-600 transition-colors duration-200 hover:text-ink"
-              >
-                <QrCode size={15} />
-                Show QR code
-              </button>
+<button
+                  type="button"
+                  ref={qrTriggerRef}
+                  onClick={() => setShowQrModal(true)}
+                  className="press inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-stone-600 transition-colors duration-200 hover:text-ink"
+                >
+                  <QrCode size={15} aria-hidden="true" />
+                  Show QR code
+                </button>
+
 
               <button
                 type="button"

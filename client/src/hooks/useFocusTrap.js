@@ -9,7 +9,7 @@ const FOCUSABLE = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(",");
 
-const isVisible = (el) => el.offsetParent !== null || el === document.activeElement;
+const isVisible = (el) => el.offsetWidth > 0 || el.offsetHeight > 0 || el === document.activeElement;
 
 /**
  * Keeps keyboard focus inside a dialog while it is open, and hands focus back
@@ -22,14 +22,20 @@ const isVisible = (el) => el.offsetParent !== null || el === document.activeElem
  * move under the overlay on a trackpad.
  *
  * Escape is deliberately not handled here. Callers already own that, and
- * handling it twice would close the dialog twice.
+ * handling it in two places would close the dialog twice.
  *
- * @param isOpen  whether the dialog is currently rendered
- * @param initialFocus optional CSS selector for the element to focus on open.
- *                     Defaults to the first focusable child.
+ * @param isOpen whether the dialog is currently open.
+ * @param options.initialFocus
+ *   CSS selector for the element to focus on open. Pass `null` to focus the
+ *   dialog container itself, which is what a screen reader should announce
+ *   first. Omit to focus the first focusable child.
+ * @param options.returnFocusRef
+ *   Ref to the element that opened the dialog. Prefer this over the captured
+ *   activeElement: Safari does not focus a button on click, so on macOS the
+ *   captured element would be <body>.
  * @returns a ref to put on the dialog element.
  */
-export default function useFocusTrap(isOpen, initialFocus) {
+export default function useFocusTrap(isOpen, { initialFocus, returnFocusRef } = {}) {
   const containerRef = useRef(null);
   const returnToRef = useRef(null);
 
@@ -37,7 +43,7 @@ export default function useFocusTrap(isOpen, initialFocus) {
     if (!isOpen) return;
 
     // Captured before anything moves focus, so we know where to send it back.
-    returnToRef.current = document.activeElement;
+    returnToRef.current = returnFocusRef?.current ?? document.activeElement;
 
     const container = containerRef.current;
 
@@ -74,7 +80,7 @@ export default function useFocusTrap(isOpen, initialFocus) {
     const raf = requestAnimationFrame(() => {
       const target =
         (initialFocus && container?.querySelector(initialFocus)) ||
-        focusables()[0] ||
+        (initialFocus === null ? container : focusables()[0]) ||
         container;
       target?.focus?.();
     });
@@ -88,14 +94,14 @@ export default function useFocusTrap(isOpen, initialFocus) {
       cancelAnimationFrame(raf);
       document.removeEventListener("keydown", onKeyDown, true);
       document.body.style.overflow = previousOverflow;
-      // Guarded: the trigger can be unmounted by the navigation that closing
+      // Guarded: the trigger is often unmounted by the navigation that closing
       // the dialog caused.
       const back = returnToRef.current;
       if (back && typeof back.focus === "function" && document.contains(back)) {
         back.focus();
       }
     };
-  }, [isOpen, initialFocus]);
+  }, [isOpen, initialFocus, returnFocusRef]);
 
   return containerRef;
 }

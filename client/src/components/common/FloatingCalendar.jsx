@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import useFocusTrap from "../../hooks/useFocusTrap";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from "lucide-react";
 
@@ -49,7 +50,13 @@ const FloatingCalendar = ({ events = [] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState(null);
-  const dialogRef = useRef(null);
+  // initialFocus null focuses the panel itself, so its aria-label is announced
+  // before any individual day. The trigger ref is passed explicitly because
+  // Safari does not focus a button on click.
+  const dialogRef = useFocusTrap(isOpen, {
+    initialFocus: null,
+    returnFocusRef: triggerRef,
+  });
   const triggerRef = useRef(null);
 
   const month = currentDate.getMonth();
@@ -121,14 +128,15 @@ const FloatingCalendar = ({ events = [] }) => {
     // render pass and the panel is never briefly empty.
     setSelectedDay(todayKey);
     setIsOpen(true);
-    dialogRef.current?.focus();
+    // Focus used to be moved here, but this runs before React has re-rendered,
+    // so dialogRef.current was still null and the panel never received focus.
+    // useFocusTrap moves it on the next frame instead.
   };
 
   const close = () => {
     setIsOpen(false);
-    // Focus goes back to the trigger, otherwise keyboard focus is dropped on
-    // the body and the next Tab starts from the top of the page.
-    triggerRef.current?.focus();
+    // Focus return is the hook's job now, so it happens on every close path
+    // rather than only the ones that remember to call this.
   };
 
   useEffect(() => {
