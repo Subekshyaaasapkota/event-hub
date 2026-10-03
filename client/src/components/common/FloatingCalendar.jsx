@@ -1,263 +1,407 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from "lucide-react";
+
+/*
+ * Floating calendar.
+ *
+ * The previous version put a hover tooltip on each day cell. That looked fine on
+ * a desktop and was completely broken in practice:
+ *
+ *   - The tooltip was absolutely positioned inside a container with
+ *     overflow-y-auto, so the scroll container clipped it. It could not reliably
+ *     escape its own parent.
+ *   - It appeared on group-hover only, so on touch devices there was no hover to
+ *     trigger it and the entire feature was undiscoverable. Nothing was
+ *     reachable by keyboard either.
+ *   - The arrow used border-6, which is not a real Tailwind width, so it never
+ *     rendered.
+ *   - Ten labels sat at 9px or 10px, and the weekday and legend rows used
+ *     slate-300 on white at roughly 2.6:1.
+ *   - The trigger button had no accessible name, no aria-expanded and no way to
+ *     close the popup with the keyboard.
+ *
+ * Now a day is a real button, and selecting one shows its events in a panel
+ * below the grid. That works the same for a mouse, a finger and a keyboard, and
+ * it removes the clipping problem because nothing is absolutely positioned
+ * outside the card any more.
+ */
+
+const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+const idOf = (event) => event?._id || event?.id;
+
+// Long form, so a screen reader does not read "12/3/2026".
+const longDate = (date) =>
+  date.toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
 const FloatingCalendar = ({ events = [] }) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const [selectedDay, setSelectedDay] = useState(null);
+  const dialogRef = useRef(null);
+  const triggerRef = useRef(null);
 
   const month = currentDate.getMonth();
   const year = currentDate.getFullYear();
+  const today = new Date();
+  const todayKey = today.toDateString();
 
-  const monthNames = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-  ];
+  // Events are bucketed by day once per month change, instead of re-filtering
+  // the whole list for every cell in the grid.
+  const eventsByDay = useMemo(() => {
+    const buckets = new Map();
 
-  const daysInMonth = (m, y) => new Date(y, m + 1, 0).getDate();
-  const firstDayOfMonth = (m, y) => new Date(y, m, 1).getDay();
+    events.forEach((event) => {
+      const add = (value, kind) => {
+        if (!value) return;
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) return;
+        const key = parsed.toDateString();
+        if (!buckets.has(key)) buckets.set(key, { events: [], deadlines: [] });
+        buckets.get(key)[kind].push(event);
+      };
+      add(event?.eventDate, "events");
+      add(event?.deadline, "deadlines");
+    });
 
-  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
-  const goToday = () => setCurrentDate(new Date());
+    return buckets;
+  }, [events]);
 
-  const days = [];
-  const totalDays = daysInMonth(month, year);
-  const startDay = firstDayOfMonth(month, year);
-  for (let i = 0; i < startDay; i++) days.push(null);
-  for (let i = 1; i <= totalDays; i++) days.push(i);
+  const cells = useMemo(() => {
+    const total = new Date(year, month + 1, 0).getDate();
+    const leading = new Date(year, month, 1).getDay();
+    const list = [];
 
-  const getDayData = (day) => {
-  if (!day) return { dayEvents: [], dayDeadlines: [] };
-  const dateStr = new Date(year, month, day).toDateString();
-  const dayEvents = events.filter(
-  (e) => e.eventDate && new Date(e.eventDate).toDateString() === dateStr
-  );
-  const dayDeadlines = events.filter(
-  (e) => e.deadline && new Date(e.deadline).toDateString() === dateStr
-  );
-  return { dayEvents, dayDeadlines };
+    for (let i = 0; i < leading; i += 1) list.push(null);
+    for (let day = 1; day <= total; day += 1) list.push(day);
+
+    return list;
+  }, [month, year]);
+
+  const selectedBucket = selectedDay ? eventsByDay.get(selectedDay) : null;
+  const selectedEvents = selectedBucket?.events ?? [];
+  const selectedDeadlines = selectedBucket?.deadlines ?? [];
+  const selectedCount = selectedEvents.length + selectedDeadlines.length;
+
+  const monthEventCount = useMemo(() => {
+    let count = 0;
+    eventsByDay.forEach((bucket, key) => {
+      const parsed = new Date(key);
+      if (parsed.getFullYear() === year && parsed.getMonth() === month) {
+        count += bucket.events.length;
+      }
+    });
+    return count;
+  }, [eventsByDay, month, year]);
+
+  const step = (delta) => {
+    setCurrentDate(new Date(year, month + delta, 1));
+    setSelectedDay(null);
+  };
+
+  const goToday = () => {
+    const now = new Date();
+    setCurrentDate(now);
+    setSelectedDay(now.toDateString());
+  };
+
+  const open = () => {
+    // Set here rather than in an effect, so opening does not cost an extra
+    // render pass and the panel is never briefly empty.
+    setSelectedDay(todayKey);
+    setIsOpen(true);
+    dialogRef.current?.focus();
+  };
+
+  const close = () => {
+    setIsOpen(false);
+    // Focus goes back to the trigger, otherwise keyboard focus is dropped on
+    // the body and the next Tab starts from the top of the page.
+    triggerRef.current?.focus();
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") close();
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isOpen]);
+
+  const openEvent = (event) => {
+    navigate(`/event/${idOf(event)}`);
+    setIsOpen(false);
   };
 
   return (
   <>
-  {/* Backdrop blur overlay */}
   {isOpen && (
   <div
-  className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm"
-  onClick={() => setIsOpen(false)}
+  className="fixed inset-0 z-[70] bg-ink/30 backdrop-blur-[2px]"
+  onClick={close}
+  aria-hidden="true"
   />
   )}
 
-  {/* Calendar popup */}
-  <div
-  className={`fixed bottom-24 right-6 z-50 w-90 bg-white rounded-3xl border border-slate-100 shadow-2xl shadow-indigo-100/50 transition-all duration-300 origin-bottom-right ${
+  <section
+  ref={dialogRef}
+  id="event-calendar-panel"
+  role="dialog"
+  aria-modal="true"
+  aria-label={`Event calendar, ${MONTH_NAMES[month]} ${year}`}
+  tabIndex={-1}
+  // The panel stays mounted so the closing transition can play, which means it
+  // would otherwise stay in the tab order and the accessibility tree while
+  // invisible. inert removes both without unmounting.
+  inert={!isOpen}
+  className={`fixed inset-x-4 bottom-24 z-[80] mx-auto max-w-sm origin-bottom rounded-2xl border border-hairline bg-white shadow-[0_24px_60px_-24px_rgba(17,17,20,0.45)] outline-none transition-[opacity,transform] duration-200 ease-out sm:inset-x-auto sm:right-6 ${
   isOpen
-  ? "opacity-100 scale-100 translate-y-0 pointer-events-auto"
-  : "opacity-0 scale-90 translate-y-4 pointer-events-none"
+  ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
+  : "pointer-events-none translate-y-3 scale-[0.97] opacity-0"
   }`}
   >
-  <div className="p-5 max-h-[80vh] overflow-y-auto">
-  {/* Header */}
-  <div className="flex items-center justify-between mb-5">
-  <div className="flex items-center gap-3">
-  <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-indigo-200">
-  <CalendarIcon size={18} />
+  {/*
+    Capped against the viewport height so the panel can never slide up behind
+    the fixed header on a short screen. dvh rather than vh, because mobile
+    browser chrome changes what 100vh actually means.
+  */}
+  <div className="max-h-[calc(100dvh-8rem)] overflow-y-auto overscroll-contain">
+  <div className="flex items-start justify-between gap-3 border-b border-hairline p-5">
+  <div className="min-w-0">
+  <h2 className="font-display text-base font-semibold text-ink">
+  {MONTH_NAMES[month]} {year}
+  </h2>
+  <p className="mt-0.5 text-xs text-stone-600">
+  {monthEventCount === 0
+  ? "No events scheduled this month"
+  : `${monthEventCount} ${monthEventCount === 1 ? "event" : "events"} this month`}
+  </p>
   </div>
-  <div>
-  <h3 className="text-sm font-black text-slate-800 leading-tight">
-  {monthNames[month]} {year}
-  </h3>
-  <p className="text-[10px] text-slate-400 font-medium">Event Roadmap</p>
-  </div>
-  </div>
-  <div className="flex items-center gap-2">
+
+  <div className="flex shrink-0 items-center gap-1.5">
   <button
-  onClick={prevMonth}
-  className="w-8 h-8 flex items-center justify-center rounded-xl border border-slate-100 text-slate-400 hover:bg-slate-50 hover:text-slate-800 transition-all"
+  type="button"
+  onClick={() => step(-1)}
+  className="press inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-hairline text-stone-600 transition-colors duration-200 hover:bg-stone-50 hover:text-ink"
+  aria-label={`Previous month, ${MONTH_NAMES[(month + 11) % 12]}`}
   >
-  <ChevronLeft size={16} />
+  <ChevronLeft size={17} aria-hidden="true" />
   </button>
   <button
+  type="button"
   onClick={goToday}
-  className="px-3 py-1.5 rounded-xl bg-slate-50 text-slate-600 text-[9px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all"
+  className="press cursor-pointer rounded-lg bg-stone-100 px-3 py-2 text-xs font-semibold text-ink transition-colors duration-200 hover:bg-stone-200"
   >
   Today
   </button>
   <button
-  onClick={nextMonth}
-  className="w-8 h-8 flex items-center justify-center rounded-xl border border-slate-100 text-slate-400 hover:bg-slate-50 hover:text-slate-800 transition-all"
+  type="button"
+  onClick={() => step(1)}
+  className="press inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-hairline text-stone-600 transition-colors duration-200 hover:bg-stone-50 hover:text-ink"
+  aria-label={`Next month, ${MONTH_NAMES[(month + 1) % 12]}`}
   >
-  <ChevronRight size={16} />
+  <ChevronRight size={17} aria-hidden="true" />
+  </button>
+  <button
+  type="button"
+  onClick={close}
+  className="press inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-hairline text-stone-600 transition-colors duration-200 hover:bg-stone-50 hover:text-ink"
+  aria-label="Close calendar"
+  >
+  <X size={16} aria-hidden="true" />
   </button>
   </div>
   </div>
 
-  {/* Weekdays */}
-  <div className="grid grid-cols-7 mb-2">
-  {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
-  <div
-  key={d}
-  className="text-center text-[9px] font-black uppercase tracking-widest text-slate-300 py-2"
-  >
-  {d}
-  </div>
-  ))}
-  </div>
-
-  {/* Calendar grid */}
-  <div className="grid grid-cols-7 gap-1.5">
-  {days.map((day, idx) => {
-  if (day === null)
-  return <div key={`empty-${idx}`} className="aspect-square" />;
-
-  const { dayEvents, dayDeadlines } = getDayData(day);
-  const dateObj = new Date(year, month, day);
-  const isToday = new Date().toDateString() === dateObj.toDateString();
-  const hasEvent = dayEvents.length > 0;
-  const hasDeadline = dayDeadlines.length > 0;
-
-  let bgColor = "bg-white";
-  let textColor = "text-slate-600";
-  let borderColor = "border-slate-50";
-
-  if (isToday) {
-  bgColor = "bg-blue-50";
-  textColor = "text-blue-700";
-  borderColor = "border-blue-200";
-  } else if (hasEvent) {
-  bgColor = "bg-emerald-50";
-  textColor = "text-emerald-700";
-  borderColor = "border-emerald-200";
-  } else if (hasDeadline) {
-  bgColor = "bg-rose-50";
-  textColor = "text-rose-700";
-  borderColor = "border-rose-200";
-  }
-
-  const dayOfWeek = idx % 7;
-  let tooltipPositionClass = "left-1/2 -translate-x-1/2";
-  let arrowPositionClass = "left-1/2 -translate-x-1/2";
-  
-  if (dayOfWeek === 0 || dayOfWeek === 1) {
-  tooltipPositionClass = "left-0";
-  arrowPositionClass = "left-5 -translate-x-1/2";
-  } else if (dayOfWeek === 5 || dayOfWeek === 6) {
-  tooltipPositionClass = "right-0";
-  arrowPositionClass = "right-5 translate-x-1/2";
-  }
-
-  return (
+  <div className="p-5">
+  <div className="grid grid-cols-7 gap-1">
+  {WEEKDAYS.map((day) => (
   <div
   key={day}
-  className={`relative aspect-square rounded-xl border ${borderColor} flex flex-col items-center justify-center group transition-all ${bgColor} hover:scale-105 hover:shadow-md cursor-default`}
+  className="pb-2 text-center text-xs font-medium uppercase tracking-wide text-stone-500"
   >
-  <span className={`text-xs font-black ${textColor}`}>{day}</span>
-
-  {/* Dot indicators */}
-  {(hasEvent || hasDeadline) && (
-  <div className="flex gap-0.5 mt-1">
-  {hasEvent && (
-  <div className="w-1 h-1 rounded-full bg-emerald-500" />
-  )}
-  {hasDeadline && (
-  <div className="w-1 h-1 rounded-full bg-rose-500" />
-  )}
-  </div>
-  )}
-
-  {/* Hover tooltip */}
-  {(hasEvent || hasDeadline) && (
-  <div className={`absolute bottom-full mb-3 w-48 bg-slate-900 text-white rounded-2xl p-3 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all z-50 shadow-2xl ${tooltipPositionClass}`}>
-  <div className="space-y-2">
-  {dayEvents.map((e) => (
-  <div
-  key={e._id || e.id}
-  onClick={(ev) => {
-  ev.stopPropagation();
-  navigate(`/event/${e._id || e.id}`);
-  setIsOpen(false);
-  }}
-  className="group/item cursor-pointer hover:bg-white/10 p-1.5 rounded-xl transition-colors border-l-4 border-emerald-500 flex justify-between items-center"
-  >
-  <div className="min-w-0">
-  <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest mb-0.5">
-  Event Date
-  </p>
-  <p className="text-xs font-bold truncate leading-tight pr-2">
-  {e.title}
-  </p>
-  </div>
-  <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-md opacity-0 group-hover/item:opacity-100 transition-opacity">
-  View
-  </span>
-  </div>
-  ))}
-  {dayDeadlines.map((e) => (
-  <div
-  key={e._id || e.id}
-  onClick={(ev) => {
-  ev.stopPropagation();
-  navigate(`/event/${e._id || e.id}`);
-  setIsOpen(false);
-  }}
-  className="group/item cursor-pointer hover:bg-white/10 p-1.5 rounded-xl transition-colors border-l-4 border-rose-500 flex justify-between items-center"
-  >
-  <div className="min-w-0">
-  <p className="text-[9px] font-bold text-rose-400 uppercase tracking-widest mb-0.5">
-  Reg. Deadline
-  </p>
-  <p className="text-xs font-bold truncate leading-tight pr-2">
-  {e.title}
-  </p>
-  </div>
-  <span className="text-[9px] bg-rose-500/20 text-rose-400 px-1.5 py-0.5 rounded-md opacity-0 group-hover/item:opacity-100 transition-opacity">
-  View
-  </span>
+  {day}
   </div>
   ))}
   </div>
-  <div className={`absolute top-full border-6 border-transparent border-t-slate-900 ${arrowPositionClass}`} />
-  </div>
+
+  <div className="grid grid-cols-7 gap-1">
+  {cells.map((day, index) => {
+  if (day === null) {
+  return <div key={`pad-${index}`} className="aspect-square" aria-hidden="true" />;
+  }
+
+  const date = new Date(year, month, day);
+  const key = date.toDateString();
+  const bucket = eventsByDay.get(key);
+  const eventCount = bucket?.events.length ?? 0;
+  const deadlineCount = bucket?.deadlines.length ?? 0;
+  const isToday = key === todayKey;
+  const isSelected = key === selectedDay;
+  const total = eventCount + deadlineCount;
+
+  const describe =
+  `${MONTH_NAMES[month]} ${day}, ${year}` +
+  (isToday ? ", today" : "") +
+  (eventCount ? `, ${eventCount} ${eventCount === 1 ? "event" : "events"}` : "") +
+  (deadlineCount
+  ? `, ${deadlineCount} registration ${deadlineCount === 1 ? "deadline" : "deadlines"}`
+  : "");
+
+  return (
+  <button
+  key={key}
+  type="button"
+  onClick={() => setSelectedDay(isSelected ? null : key)}
+  aria-pressed={isSelected}
+  aria-label={describe}
+  className={`press relative flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border text-sm transition-[background-color,border-color,color] duration-200 ${
+  isSelected
+  ? "border-ink bg-ink text-white"
+  : isToday
+  ? "border-stone-400 bg-white text-ink"
+  : total > 0
+  ? "border-hairline bg-white text-stone-700 hover:border-stone-400 hover:bg-stone-50"
+  : "border-transparent bg-transparent text-stone-500 hover:bg-stone-100"
+  }`}
+  >
+  <span className={`font-medium ${isToday && !isSelected ? "underline underline-offset-2" : ""}`}>
+  {day}
+  </span>
+
+  {total > 0 && (
+  <span className="mt-1 flex items-center gap-0.5" aria-hidden="true">
+  {eventCount > 0 && (
+  <span className={`h-1.5 w-1.5 rounded-full ${isSelected ? "bg-white" : "bg-emerald-600"}`} />
   )}
-  </div>
+  {deadlineCount > 0 && (
+  <span className={`h-1.5 w-1.5 rounded-full ${isSelected ? "bg-white/70" : "bg-rose-600"}`} />
+  )}
+  </span>
+  )}
+  </button>
   );
   })}
   </div>
 
-  {/* Legend */}
-  <div className="mt-4 flex flex-wrap items-center justify-center gap-5 pt-4 border-t border-slate-50">
-  <div className="flex items-center gap-1.5">
-  <div className="w-3 h-3 rounded bg-blue-50 border border-blue-200" />
-  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Today</span>
-  </div>
-  <div className="flex items-center gap-1.5">
-  <div className="w-3 h-3 rounded bg-emerald-50 border border-emerald-200" />
-  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Event</span>
-  </div>
-  <div className="flex items-center gap-1.5">
-  <div className="w-3 h-3 rounded bg-rose-50 border border-rose-200" />
-  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Deadline</span>
-  </div>
-  </div>
-  </div>
+  {/* Selected day detail. This replaces the hover tooltip, so it is reachable
+      by touch and by keyboard, and it cannot be clipped. */}
+  <div className="mt-4 min-h-[92px] rounded-xl border border-hairline bg-paper p-4">
+  {selectedDay === null ? (
+  <p className="text-sm text-stone-600">
+  Pick a day to see what is on.
+  </p>
+  ) : (
+  <>
+  <p className="text-xs font-medium text-stone-500">
+  {longDate(new Date(selectedDay))}
+  </p>
+
+  {selectedCount === 0 ? (
+  <p className="mt-2 text-sm text-stone-600">
+  Nothing scheduled.
+  </p>
+  ) : (
+  <ul className="mt-2.5 space-y-1.5">
+  {selectedEvents.map((event) => (
+  <li key={`event-${idOf(event)}`}>
+  <button
+  type="button"
+  onClick={() => openEvent(event)}
+  className="group flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors duration-200 hover:bg-white"
+  >
+  <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-600" aria-hidden="true" />
+  <span className="min-w-0 flex-1">
+  <span className="block text-xs font-medium uppercase tracking-wide text-stone-500">
+  Event
+  </span>
+  <span className="block truncate text-sm font-medium text-ink">
+  {event.title}
+  </span>
+  </span>
+  <ChevronRight
+  size={15}
+  aria-hidden="true"
+  className="shrink-0 text-stone-400 transition-transform duration-200 group-hover:translate-x-0.5"
+  />
+  </button>
+  </li>
+  ))}
+  {selectedDeadlines.map((event) => (
+  <li key={`deadline-${idOf(event)}`}>
+  <button
+  type="button"
+  onClick={() => openEvent(event)}
+  className="group flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors duration-200 hover:bg-white"
+  >
+  <span className="h-2 w-2 shrink-0 rounded-full bg-rose-600" aria-hidden="true" />
+  <span className="min-w-0 flex-1">
+  <span className="block text-xs font-medium uppercase tracking-wide text-stone-500">
+  Registration deadline
+  </span>
+  <span className="block truncate text-sm font-medium text-ink">
+  {event.title}
+  </span>
+  </span>
+  <ChevronRight
+  size={15}
+  aria-hidden="true"
+  className="shrink-0 text-stone-400 transition-transform duration-200 group-hover:translate-x-0.5"
+  />
+  </button>
+  </li>
+  ))}
+  </ul>
+  )}
+  </>
+  )}
   </div>
 
-  {/* FAB trigger button */}
+  <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-hairline pt-4">
+  <span className="flex items-center gap-1.5 text-xs text-stone-600">
+  <span className="h-2 w-2 rounded-full bg-emerald-600" aria-hidden="true" />
+  Event
+  </span>
+  <span className="flex items-center gap-1.5 text-xs text-stone-600">
+  <span className="h-2 w-2 rounded-full bg-rose-600" aria-hidden="true" />
+  Registration deadline
+  </span>
+  <span className="flex items-center gap-1.5 text-xs text-stone-600">
+  <span className="h-2 w-2 rounded-full border border-stone-400 bg-white" aria-hidden="true" />
+  Today
+  </span>
+  </div>
+  </div>
+  </div>
+  </section>
+
   <button
-  onClick={() => setIsOpen((prev) => !prev)}
-  className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl transition-all duration-300 ${
-  isOpen
-  ? "bg-indigo-900 rotate-12 scale-95 shadow-indigo-900/30"
-  : "bg-indigo-600 hover:bg-indigo-700 hover:scale-105 shadow-indigo-300"
-  }`}
-  title="Toggle Event Calendar"
+  ref={triggerRef}
+  type="button"
+  onClick={() => (isOpen ? close() : open())}
+  aria-expanded={isOpen}
+  aria-controls="event-calendar-panel"
+  aria-label={isOpen ? "Close event calendar" : "Open event calendar"}
+  className="press fixed bottom-6 right-6 z-[80] inline-flex h-14 w-14 cursor-pointer items-center justify-center rounded-2xl bg-ink text-white shadow-[0_14px_30px_-12px_rgba(17,17,20,0.5)] transition-[background-color,transform] duration-200 ease-out hover:bg-ink-soft hover:shadow-[0_18px_36px_-12px_rgba(17,17,20,0.55)] md:bottom-8 md:right-8"
   >
   {isOpen ? (
-  <X size={22} className="text-white" />
+  <X size={22} aria-hidden="true" />
   ) : (
-  <CalendarIcon size={22} className="text-white" />
+  <CalendarIcon size={22} aria-hidden="true" />
   )}
   </button>
   </>
