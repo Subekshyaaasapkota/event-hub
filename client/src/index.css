@@ -86,6 +86,68 @@ html {
 }
 
 /*
+ * Scroll reveal.
+ *
+ * Blocks start displaced and settle once as they arrive, which gives the page
+ * one authored moment per section instead of the old approach of firing five
+ * infinite animations on mount. Transform and opacity only, so it stays on the
+ * compositor and never triggers layout.
+ *
+ * The hidden start state is opt-in through .reveal rather than global, so
+ * anything that fails to run its observer still renders visible.
+ */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+  transition:
+    opacity 460ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 460ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/*
+ * Underline that grows from the left on hover and focus. Drawn with a
+ * background image rather than border or scale so it can animate its own width
+ * without moving the text.
+ */
+.underline-grow {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0% 1px;
+  transition:
+    background-size 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 220ms ease-out;
+}
+
+.underline-grow:hover,
+.underline-grow:focus-visible {
+  background-size: 100% 1px;
+}
+
+/*
+ * Press feedback for anything tappable that is not a button. transform only, so
+ * it cannot shift the layout around it the way a width or margin change would.
+ */
+.press {
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 180ms ease-out,
+    border-color 180ms ease-out,
+    color 180ms ease-out;
+}
+
+.press:active {
+  transform: scale(0.98);
+}
+
+/*
  * Printing.
  *
  * The admin event details page has a print button, but with no print styles

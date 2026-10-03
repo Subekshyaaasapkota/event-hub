@@ -3,6 +3,8 @@ import { Mail, Phone, MapPin, Send } from "lucide-react";
 import { toast } from "react-hot-toast";
 import Footer from "../../components/common/Footer";
 import api from "../../api/axios";
+import useReveal from "../../hooks/useReveal";
+
 
 // Matches the server side limits so we fail fast instead of round tripping.
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -13,6 +15,12 @@ const Contact = () => {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [sending, setSending] = useState(false);
+  // The form column reveals earlier than the details column, since a short
+  // aside next to a long form would otherwise appear well after it.
+  const headerRef = useReveal();
+  const detailsRef = useReveal();
+  const formRef = useReveal({ threshold: 0.05 });
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -92,8 +100,12 @@ const Contact = () => {
 
   return (
   <div className="flex min-h-screen flex-col bg-paper">
-  <main className="flex-1">
-  <section className="mx-auto max-w-5xl px-6 pb-12 pt-20">
+<main className="flex-1">
+  <section
+    ref={headerRef}
+    className="reveal mx-auto max-w-5xl px-6 pb-12 pt-20"
+  >
+
   <h1 className="font-display text-4xl font-semibold tracking-tight text-ink md:text-5xl">
   Get in touch
   </h1>
@@ -103,39 +115,46 @@ const Contact = () => {
   </p>
   </section>
 
-  <section className="max-w-6xl mx-auto px-6 py-12 grid md:grid-cols-5 gap-12 mb-20">
-  {/* Contact Information Cards (2 Columns) */}
-  <div className="md:col-span-2 space-y-6">
+  <section className="mx-auto mb-20 grid max-w-6xl gap-8 px-6 py-12 lg:grid-cols-12 lg:gap-10">
+  {/* The form is the point of this page, so it gets 8 of 12 columns. The old
+      split was 2/5 against 3/5, which left each name and email field about
+      165px wide at tablet width and forced the two-column field row to
+      collapse awkwardly. */}
+<div
+    ref={detailsRef}
+    className="reveal space-y-6 lg:col-span-4"
+  >
+
   <div className="rounded-2xl border border-hairline bg-white p-8">
   <h2 className="mb-6 font-display text-xl font-semibold text-ink">
   Contact details
   </h2>
 
   <div className="space-y-6">
-  <div className="flex items-start gap-4">
-  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-ink-soft">
+  <div className="group flex items-start gap-4">
+  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-ink-soft transition-colors duration-200 group-hover:bg-stone-200 group-hover:text-ink">
   <Mail size={20} />
   </div>
   <div className="min-w-0">
   <h3 className="text-sm font-semibold text-ink">Email</h3>
   <a
   href="mailto:subekshya@sapkota.com"
-  className="text-stone-600 underline decoration-stone-300 underline-offset-2 transition-colors duration-200 hover:text-indigo-700 hover:decoration-indigo-300"
+  className="underline-grow break-all text-stone-600 transition-colors duration-200 hover:text-indigo-700"
   >
   subekshya@sapkota.com
   </a>
   </div>
   </div>
 
-  <div className="flex items-start gap-4">
-  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-ink-soft">
+  <div className="group flex items-start gap-4">
+  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-ink-soft transition-colors duration-200 group-hover:bg-stone-200 group-hover:text-ink">
   <Phone size={20} />
   </div>
   <div className="min-w-0">
   <h3 className="text-sm font-semibold text-ink">Call or WhatsApp</h3>
   <a
   href="tel:+9779812345678"
-  className="text-stone-600 underline decoration-stone-300 underline-offset-2 transition-colors duration-200 hover:text-indigo-700 hover:decoration-indigo-300"
+  className="underline-grow break-all text-stone-600 transition-colors duration-200 hover:text-indigo-700"
   >
   +977 9812345678
   </a>
@@ -145,8 +164,8 @@ const Contact = () => {
   </div>
   </div>
 
-  <div className="flex items-start gap-4">
-  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-ink-soft">
+  <div className="group flex items-start gap-4">
+  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-ink-soft transition-colors duration-200 group-hover:bg-stone-200 group-hover:text-ink">
   <MapPin size={20} />
   </div>
   <div>
@@ -163,12 +182,20 @@ const Contact = () => {
   </div>
 
   {/* Contact Form (3 Columns) */}
-<div className="rounded-2xl border border-hairline bg-white p-8 md:p-10 shadow-[0_18px_40px_-28px_rgba(17,17,20,0.3)]">
+<div ref={formRef} className="reveal lg:col-span-8">
+
+  <div className="rounded-2xl border border-hairline bg-white p-6 shadow-[0_18px_40px_-28px_rgba(17,17,20,0.3)] sm:p-8 lg:p-10">
+  <h2 className="font-display text-xl font-semibold text-ink">
+  Send us a message
+  </h2>
+  <p className="mb-6 mt-1.5 text-sm text-stone-600">
+  Fields marked required are checked before anything is sent.
+  </p>
   <form onSubmit={handleSubmit} noValidate className="space-y-5">
-  <div className="grid gap-5 md:grid-cols-2">
+  <div className="grid gap-5 sm:grid-cols-2">
   <div className="space-y-1.5">
   <label htmlFor="contact-name" className="block text-sm font-semibold text-ink">
-  Your name
+  Your name <span className="font-normal text-stone-500">(required)</span>
   </label>
   <input
   id="contact-name"
@@ -186,7 +213,7 @@ const Contact = () => {
   </div>
   <div className="space-y-1.5">
   <label htmlFor="contact-email" className="block text-sm font-semibold text-ink">
-  Email address
+  Email address <span className="font-normal text-stone-500">(required)</span>
   </label>
   <input
   id="contact-email"
@@ -222,7 +249,7 @@ const Contact = () => {
 
   <div className="space-y-1.5">
   <label htmlFor="contact-message" className="block text-sm font-semibold text-ink">
-  Message
+  Message <span className="font-normal text-stone-500">(required)</span>
   </label>
   <textarea
   id="contact-message"
@@ -243,7 +270,7 @@ const Contact = () => {
   type="submit"
   disabled={sending}
   aria-busy={sending}
-  className={`group inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl px-8 py-3.5 text-sm font-semibold
+  className={`press group inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl px-8 py-3.5 text-sm font-semibold
     transition-colors duration-200 ${sending
       ? "cursor-not-allowed bg-stone-200 text-stone-500"
       : "bg-ink text-white hover:bg-ink-soft active:bg-black"
@@ -260,6 +287,7 @@ const Contact = () => {
   )}
   </button>
   </form>
+  </div>
   </div>
 
   </section>
