@@ -199,7 +199,28 @@ seeded `admin@eventhub.dev` demo login, and the genuine eSewa gateway URLs.
 
 ---
 
-## 8. Verification
+## 8. Accessibility
+
+### Registration cards could not be reached by keyboard
+Every card on "My Registrations" was a `div` with an `onClick`. It looked
+clickable, but it was not focusable and could not be opened with Enter, so a
+keyboard or screen reader user had no route from the list to the event it
+described. Each card is now a `Link`, which also makes middle-click and
+"open in new tab" behave the way the cursor already implied, and it carries
+a visible focus ring. *(`adb7d64`)*
+
+### Three images had no alt text
+The user and club detail modals in the admin and club areas rendered images
+with no `alt` attribute at all, so a screen reader read out the file name.
+They now describe whose picture they show. The decorative avatars that
+already used `alt=""` were left alone, since the name sits beside them in
+text and an empty alt is the correct choice there. *(`adb7d64`)*
+
+No `href="#"` placeholder links were found anywhere in the client.
+
+---
+
+## 9. Verification
 
 ### Automated
 
@@ -215,6 +236,14 @@ seeded `admin@eventhub.dev` demo login, and the genuine eSewa gateway URLs.
 - Custom smoke suites run during the earlier passes: auth 20/20,
   registration 22/22, seed 39/39, documentation 12/12, club approval 5/5,
   geospatial 14/14.
+- Final end to end smoke run, 17/17 passing: health, public event list, geo
+  query, malformed id 404, `/events/nearby` 404, contact validation 422,
+  unauthenticated admin refused with 401, admin login, admin registrations
+  and users, clubs all and pending, student and club login, a student
+  blocked from admin with 403, and a registration attempt that submitted
+  `role: "Admin"` being stored as `["Student"]`. The probe account created by
+  that last check was deleted again, and the database was re-counted
+  afterwards to confirm nothing was left behind.
 
 ### Live, against the running servers
 
@@ -231,8 +260,10 @@ deep links /contact, /this-does-not-exist   200, so the router renders 404
 ### Data state after the work
 
 16 users, 6 clubs, 9 events, 24 registrations. All 6 clubs are `Approved` and
-verified, no event is missing a poster, no registration points at a deleted
-event, and there are no orphaned rows.
+verified, with no row left holding a status outside the schema enum. No event
+is missing a poster, no registration points at a deleted event, and there are
+no orphaned rows. Test accounts created while verifying these fixes were
+removed again and the counts re-checked afterwards.
 
 ### Known gaps
 
