@@ -1,25 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  Calendar,
-  MapPin,
-  Clock,
-  ExternalLink,
-  ChevronLeft,
-  Share2,
-  QrCode,
-  Building2,
-  Mail,
-  CheckCircle2,
-  Globe,
-  X,
-  Facebook,
-  Instagram,
-  Twitter,
-  Github,
-  Linkedin,
-} from "lucide-react";
+import { AlertCircle, Building2, Calendar, CheckCircle2, ChevronLeft, Clock, ExternalLink, Facebook, Github, Globe, Instagram, Linkedin, Mail, MapPin, QrCode, Share2, Twitter, X } from "lucide-react";
+
 import QRCode from "qrcode";
 import Footer from "../../components/common/Footer";
 import CountdownTimer from "../../components/common/CountdownTimer";
@@ -27,6 +10,7 @@ import useEvents from "../../hooks/useEvents";
 import useAuth from "../../hooks/useAuth";
 import { getEventPoster, onPosterError } from "../../utils/imageUrl";
 import useReveal from "../../hooks/useReveal";
+import useFocusTrap from "../../hooks/useFocusTrap";
 
 const EventDetails = () => {
   const { id } = useParams();
@@ -36,12 +20,18 @@ const EventDetails = () => {
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [qrStatus, setQrStatus] = useState("idle"); // idle | generating | ready | failed
+  const [qrDataUrl, setQrDataUrl] = useState("");
+  const [qrAttempt, setQrAttempt] = useState(0);
+  // Focus the close button rather than the download link, so Enter cannot
+  // trigger a download before the dialog has been read.
+  const qrDialogRef = useFocusTrap(showQrModal, "[data-qr-close]");
 
   // Staggered by column so the page settles in reading order rather than all at once.
   const heroRef = useReveal({ threshold: 0.05 });
-  const asideRef = useReveal({ threshold: 0.02 });
-  const [qrDataUrl, setQrDataUrl] = useState("");
+const asideRef = useReveal({ threshold: 0.02 });
   const [error, setError] = useState(null);
+
 
   useEffect(() => {
   // Always fetch by ID - clean, simple, always correct
@@ -70,17 +60,34 @@ const EventDetails = () => {
   loadEvent();
   }, [id, user, fetchEventById, fetchMyRegistrations]); // only re-runs when URL id or user changes
 
-useEffect(() => {
+// "Generating QR code..." used to be shown both while generating and after a
+// failure, because the catch set the URL to "" and that rendered the same
+// pending message. A failed share looked like an infinite load.
+  useEffect(() => {
     if (!showQrModal || !event) return;
+
+    let cancelled = false;
+    setQrStatus("generating");
 
     const currentUrl = window.location.href;
     QRCode.toDataURL(currentUrl, { width: 300, margin: 2 })
-    .then((dataUrl) => setQrDataUrl(dataUrl))
+    .then((dataUrl) => {
+      if (cancelled) return;
+      setQrDataUrl(dataUrl);
+      setQrStatus("ready");
+    })
     .catch((err) => {
       console.error("QRCode generation failed:", err);
+      if (cancelled) return;
       setQrDataUrl("");
+      setQrStatus("failed");
     });
-  }, [showQrModal, event]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showQrModal, event, qrAttempt]);
+
 
   // Escape closes the dialog. It had no way out apart from the close button,
   // and no backdrop click either.
@@ -469,12 +476,13 @@ if (loading)
 
 {showQrModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowQrModal(false);
           }}
         >
           <div
+            ref={qrDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="qr-modal-title"
@@ -485,6 +493,7 @@ if (loading)
                 button. It now has both. */}
             <button
               type="button"
+              data-qr-close
               aria-label="Close QR code dialog"
               onClick={() => setShowQrModal(false)}
               className="absolute right-3 top-3 cursor-pointer rounded-lg p-2 text-stone-500 transition-colors duration-200 hover:bg-stone-100 hover:text-ink"
@@ -499,7 +508,7 @@ if (loading)
               Scan this code to open the event page on another device.
             </p>
 
-            {qrDataUrl ? (
+{qrStatus === "ready" && qrDataUrl ? (
               <div className="mt-5 flex flex-col items-center">
                 <img
                   src={qrDataUrl}
@@ -509,16 +518,34 @@ if (loading)
                 <a
                   href={qrDataUrl}
                   download={`${event.title}-EventHub-qr.png`}
-                  className="mt-4 inline-flex cursor-pointer items-center rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-ink-soft"
+                  className="press mt-4 inline-flex cursor-pointer items-center rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-paper transition-colors duration-200 hover:bg-ink-soft"
                 >
                   Download QR
                 </a>
+              </div>
+            ) : qrStatus === "failed" ? (
+              <div role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4">
+                <p className="flex items-start gap-2 text-sm font-medium text-red-800">
+                  <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+                  <span>
+                    The QR code could not be generated. You can still copy the link
+                    and share it directly.
+                  </span>
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setQrAttempt((n) => n + 1)}
+                  className="press mt-3 cursor-pointer rounded-lg bg-white px-3.5 py-2 text-sm font-semibold text-ink ring-1 ring-stone-300 transition-colors duration-200 hover:bg-stone-50"
+                >
+                  Try again
+                </button>
               </div>
             ) : (
               <p role="status" className="mt-5 text-sm text-stone-500">
                 Generating QR code...
               </p>
             )}
+
           </div>
         </div>
       )}
