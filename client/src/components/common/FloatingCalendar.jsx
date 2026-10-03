@@ -168,7 +168,7 @@ const FloatingCalendar = ({ events = [] }) => {
   // would otherwise stay in the tab order and the accessibility tree while
   // invisible. inert removes both without unmounting.
   inert={!isOpen}
-  className={`fixed inset-x-4 bottom-24 z-[80] mx-auto max-w-sm origin-bottom rounded-2xl border border-hairline bg-white shadow-[0_24px_60px_-24px_rgba(17,17,20,0.45)] outline-none transition-[opacity,transform] duration-200 ease-out sm:inset-x-auto sm:right-6 ${
+  className={`fixed inset-x-4 bottom-[calc(8.5rem+env(safe-area-inset-bottom))] z-[80] mx-auto max-w-sm origin-bottom rounded-2xl border border-hairline bg-white shadow-[0_24px_60px_-24px_rgba(17,17,20,0.45)] outline-none transition-[opacity,transform] duration-200 ease-out sm:inset-x-auto sm:right-6 md:bottom-24 ${
   isOpen
   ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
   : "pointer-events-none translate-y-3 scale-[0.97] opacity-0"
@@ -179,7 +179,7 @@ const FloatingCalendar = ({ events = [] }) => {
     the fixed header on a short screen. dvh rather than vh, because mobile
     browser chrome changes what 100vh actually means.
   */}
-  <div className="max-h-[calc(100dvh-8rem)] overflow-y-auto overscroll-contain">
+  <div className="max-h-[calc(100dvh-10rem)] overflow-y-auto overscroll-contain">
   <div className="flex items-start justify-between gap-3 border-b border-hairline p-5">
   <div className="min-w-0">
   <h2 className="font-display text-base font-semibold text-ink">
@@ -396,7 +396,7 @@ const FloatingCalendar = ({ events = [] }) => {
   aria-expanded={isOpen}
   aria-controls="event-calendar-panel"
   aria-label={isOpen ? "Close event calendar" : "Open event calendar"}
-  className="press fixed bottom-6 right-6 z-[80] inline-flex h-14 w-14 cursor-pointer items-center justify-center rounded-2xl bg-ink text-white shadow-[0_14px_30px_-12px_rgba(17,17,20,0.5)] transition-[background-color,transform] duration-200 ease-out hover:bg-ink-soft hover:shadow-[0_18px_36px_-12px_rgba(17,17,20,0.55)] md:bottom-8 md:right-8"
+  className="press fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-[80] sm:right-6 md:bottom-8 inline-flex h-14 w-14 cursor-pointer items-center justify-center rounded-2xl bg-ink text-white shadow-[0_14px_30px_-12px_rgba(17,17,20,0.5)] transition-[background-color,transform] duration-200 ease-out hover:bg-ink-soft hover:shadow-[0_18px_36px_-12px_rgba(17,17,20,0.55)] md:bottom-8 md:right-8"
   >
   {isOpen ? (
   <X size={22} aria-hidden="true" />

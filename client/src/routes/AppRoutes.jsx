@@ -52,11 +52,11 @@ import ScrollToTop from "./ScrollToTop.jsx";
 const AppRoutes = () => {
 return (
   <>
-  // Every route change scrolls back to the top. This lives here rather than in
-  // each page because pages kept missing it, so navigation inherited the
-  // previous page's scroll offset.
+  {/* Every route change scrolls back to the top. This lives here rather than
+      in each page because pages kept missing it, so navigation inherited the
+      previous page's scroll offset. */}
   <ScrollToTop />
-  // /privacy-policy, /terms, and /faq all render the SupportCenter page.
+  {/* /privacy-policy, /terms, and /faq all render the SupportCenter page. */}
   <Routes>
   {/*  Public Routes */}
   <Route element={<MainLayout />}>
