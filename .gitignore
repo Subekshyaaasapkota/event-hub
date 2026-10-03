@@ -43,4 +43,12 @@ Thumbs.db
 
 # Local scratch / working notes, not part of the project
 docs/your-task*
+
+# Local account / credential scratchpad. Never committed: it is per-machine and
+# is meant to hold real logins. server/.env.example documents the real vars.
 Accounts.local.md
+Accounts.md
+
+# Assistant tooling installed into the repo (.opencode/skills/...). Local
+# artefact of the CLI, not application code. Skills live globally too.
+.opencode/
