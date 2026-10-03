@@ -16,6 +16,7 @@ import Contact from "../pages/public/Contact";
 import SupportCenter from "../pages/public/SupportCenter";
 import PaymentSuccess from "../pages/public/PaymentSuccess";
 import EsewaPayment from "../pages/public/EsewaPayment";
+import NotFound from "../pages/public/NotFound";
 
 // Auth Pages
 import Login from "../pages/auth/Login";
@@ -179,8 +180,12 @@ const AppRoutes = () => {
   <Route path="club/verification" element={<AdminManageClubs />} />
   </Route>
 
-  {/*  404 Fallback */}
-  <Route path="*" element={<Navigate to="/" replace />} />
+  {/* 404 Fallback. Used to silently redirect to "/", which gave no feedback
+      on a dead link and broke the back button. It now renders inside
+      MainLayout so the navbar stays available. */}
+  <Route element={<MainLayout />}>
+  <Route path="*" element={<NotFound />} />
+  </Route>
   </Routes>
   );
 };

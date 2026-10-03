@@ -165,7 +165,7 @@ const Profile = () => {
   value={editData.name}
   onChange={handleInputChange}
   className="w-full text-center text-2xl font-black text-slate-800 tracking-tighter uppercase italic bg-slate-50 border-b-2 border-indigo-600 py-1 outline-none"
-  placeholder="Identity Name"
+  placeholder="Your name"
   />
   ) : (
   <h2 className="text-3xl font-black text-slate-800 tracking-tighter uppercase italic">

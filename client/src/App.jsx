@@ -3,6 +3,7 @@ import { Toaster } from "react-hot-toast";
 import AppRoutes from "./routes/AppRoutes";
 import useAuth from "./hooks/useAuth";
 import Navbar from "./components/common/Navbar";
+import ErrorBoundary from "./components/common/ErrorBoundary";
 
 const App = () => {
   const { getMe } = useAuth();
@@ -17,7 +18,9 @@ const App = () => {
   return (
   <div>
   {/* <Navbar/> */}
+  <ErrorBoundary>
   <AppRoutes />
+  </ErrorBoundary>
   <Toaster />
   </div>
   );

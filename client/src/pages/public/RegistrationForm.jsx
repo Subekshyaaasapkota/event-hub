@@ -318,7 +318,7 @@ const RegistrationForm = ({ eventId, onClose, onSuccess }) => {
   </div>
   <div>
   <FieldLabel>Phone Number</FieldLabel>
-  <Input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="+977 98XXXXXXXX" />
+  <Input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="9812345678" />
   </div>
   </div>
   )}

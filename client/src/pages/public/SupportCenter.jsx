@@ -110,7 +110,7 @@ const TERMS_SECTIONS = [
   },
   {
   title: "User Accounts",
-  body: "You are responsible for maintaining the confidentiality of your account credentials. You agree to notify us immediately at support@eventhub.com.np if you suspect unauthorized access to your account. You are responsible for all activity that occurs under your account. EventHub reserves the right to suspend or terminate accounts that violate these terms, provide false information, engage in disruptive behavior, or remain inactive for an extended period.",
+  body: "You are responsible for maintaining the confidentiality of your account credentials. You agree to notify us immediately at subekshya@sapkota.com if you suspect unauthorized access to your account. You are responsible for all activity that occurs under your account. EventHub reserves the right to suspend or terminate accounts that violate these terms, provide false information, engage in disruptive behavior, or remain inactive for an extended period.",
   },
   {
   title: "Organizer Responsibilities",
@@ -146,7 +146,7 @@ const TERMS_SECTIONS = [
   },
   {
   title: "Contact",
-  body: "For any questions regarding these Terms and Conditions, please contact the EventHub team at: support@eventhub.com.np | Department of Computer Science & IT, Butwal Multiple Campus, Butwal-3, Goalpark, Rupandehi, Nepal.",
+  body: "For any questions regarding these Terms and Conditions, please contact the EventHub team at: subekshya@sapkota.com | Department of Computer Science & IT, Butwal Multiple Campus, Butwal-3, Goalpark, Rupandehi, Nepal.",
   },
 ];
 
@@ -227,7 +227,7 @@ const PRIVACY_SECTIONS = [
   },
   {
   subtitle: "Account Deletion",
-  text: "You may request deletion of your account and associated personal data by emailing support@eventhub.com.np. We will process your request within 14 days. Note that registration records shared with organizers may remain in their systems.",
+  text: "You may request deletion of your account and associated personal data by emailing subekshya@sapkota.com. We will process your request within 14 days. Note that registration records shared with organizers may remain in their systems.",
   },
   {
   subtitle: "Data Portability",
@@ -398,7 +398,7 @@ export default function SupportCenter() {
   {/* Breadcrumbs */}
   <div className="flex items-center gap-2 text-xs font-medium mb-8">
   <Link to="/" className="text-indigo-400 hover:text-indigo-300">Home</Link>
-  <span className="text-slate-600">›</span>
+  <span className="text-slate-600">â€º</span>
   <span className="text-slate-400 capitalize">
   {activeTab === "faq" ? "FAQ" : activeTab === "terms" ? "Terms & Conditions" : "Privacy Policy"}
   </span>
@@ -567,7 +567,7 @@ export default function SupportCenter() {
   <p className="text-slate-400 text-sm">Our support team usually responds within 24 hours.</p>
   </div>
   <a
-  href="mailto:support@eventhub.com.np"
+  href="mailto:subekshya@sapkota.com"
   className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm px-8 py-4 rounded-2xl transition-all whitespace-nowrap"
   >
   Contact Support Center
