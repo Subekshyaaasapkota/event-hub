@@ -47,9 +47,15 @@ import AdminEventDetails from "../pages/admin/AdminEventDetails";
 import AdminRegistrations from "../pages/admin/AdminRegistrations";
 import AdminHome from "../pages/admin/AdminHome.jsx";
 import MainLayout from "../components/layout/MainLayout.jsx";
+import ScrollToTop from "./ScrollToTop.jsx";
 
 const AppRoutes = () => {
-  return (
+return (
+  <>
+  // Every route change scrolls back to the top. This lives here rather than in
+  // each page because pages kept missing it, so navigation inherited the
+  // previous page's scroll offset.
+  <ScrollToTop />
   // /privacy-policy, /terms, and /faq all render the SupportCenter page.
   <Routes>
   {/*  Public Routes */}
@@ -186,7 +192,8 @@ const AppRoutes = () => {
   <Route element={<MainLayout />}>
   <Route path="*" element={<NotFound />} />
   </Route>
-  </Routes>
+</Routes>
+  </>
   );
 };
 
