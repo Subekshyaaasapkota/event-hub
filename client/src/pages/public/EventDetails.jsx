@@ -26,6 +26,7 @@ import CountdownTimer from "../../components/common/CountdownTimer";
 import useEvents from "../../hooks/useEvents";
 import useAuth from "../../hooks/useAuth";
 import { getEventPoster, onPosterError } from "../../utils/imageUrl";
+import useReveal from "../../hooks/useReveal";
 
 const EventDetails = () => {
   const { id } = useParams();
@@ -35,6 +36,10 @@ const EventDetails = () => {
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showQrModal, setShowQrModal] = useState(false);
+
+  // Staggered by column so the page settles in reading order rather than all at once.
+  const heroRef = useReveal({ threshold: 0.05 });
+  const asideRef = useReveal({ threshold: 0.02 });
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [error, setError] = useState(null);
 
@@ -153,7 +158,7 @@ if (loading)
       </div>
       <button
         onClick={() => navigate("/events")}
-        className="group flex cursor-pointer items-center gap-2 rounded-lg text-sm font-semibold text-ink transition-colors hover:text-indigo-700"
+        className="press group flex cursor-pointer items-center gap-2 rounded-lg text-sm font-semibold text-ink transition-colors duration-200 hover:bg-stone-50 hover:text-ink-soft"
       >
         <ChevronLeft
           size={18}
@@ -196,6 +201,7 @@ if (loading)
   return (
 <div className="flex min-h-screen flex-col bg-paper">
       <main className="flex-1">
+        <HeroRef />
         <div className="relative overflow-hidden pb-12 pt-24 lg:pb-20 lg:pt-32">
           <div className="mx-auto max-w-6xl px-6">
 
@@ -215,7 +221,7 @@ if (loading)
 
   <div className="grid lg:grid-cols-12 gap-12 items-start">
   {/* Left Column */}
-  <div className="lg:col-span-8 space-y-8">
+  <div ref={heroRef} className="reveal space-y-8 lg:col-span-8">
 <div className="relative aspect-video overflow-hidden rounded-2xl border border-hairline bg-stone-200 shadow-[0_20px_45px_-28px_rgba(17,17,20,0.35)]">
           {/* Real poster when there is one, otherwise the drawn category
               placeholder. onError catches a poster URL that resolves but 404s,
@@ -223,7 +229,7 @@ if (loading)
           <img
             src={getEventPoster(event)}
             alt={`Poster for ${event.title}`}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover motion-safe:animate-[poster-in_620ms_cubic-bezier(0.22,1,0.36,1)_both]"
             onError={(e) => onPosterError(event, e.currentTarget)}
           />
           <div className="absolute left-5 top-5">
@@ -252,9 +258,9 @@ if (loading)
           {event.title}
         </h1>
 
-        <div className="grid gap-6 border-b border-hairline pb-8 sm:grid-cols-2">
-          <div className="flex items-start gap-4">
-            <div className="mt-0.5 rounded-xl bg-stone-100 p-3 text-ink-soft">
+        <div className="reveal-stagger grid gap-6 border-b border-hairline pb-8 sm:grid-cols-2">
+          <div className="group flex items-start gap-4" style={{ "--reveal-delay": "0ms" }}>
+            <div className="mt-0.5 rounded-xl bg-stone-100 p-3 text-ink-soft transition-colors duration-200 group-hover:bg-stone-200 group-hover:text-ink">
               <Calendar size={20} />
             </div>
             <div>
@@ -265,8 +271,8 @@ if (loading)
               <p className="text-sm text-stone-600">Starts at {formatTime(event.eventDate)}</p>
             </div>
           </div>
-          <div className="flex items-start gap-4">
-            <div className="mt-0.5 rounded-xl bg-stone-100 p-3 text-ink-soft">
+          <div className="group flex items-start gap-4" style={{ "--reveal-delay": "90ms" }}>
+            <div className="mt-0.5 rounded-xl bg-stone-100 p-3 text-ink-soft transition-colors duration-200 group-hover:bg-stone-200 group-hover:text-ink">
               {event.eventType === "online" ? <Globe size={20} /> : <MapPin size={20} />}
             </div>
             <div>
@@ -293,7 +299,7 @@ if (loading)
                       href={event.googleMapUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-ink underline decoration-stone-300 underline-offset-2 transition-colors hover:text-indigo-700 hover:decoration-indigo-300"
+                      className="underline-grow mt-1 inline-flex items-center gap-1 text-sm font-medium text-ink transition-colors duration-200 hover:text-ink-soft"
                     >
                       View on Maps
                       <ExternalLink size={13} />
@@ -321,7 +327,7 @@ if (loading)
               {event.tags.map((tag, index) => (
                 <li
                   key={index}
-                  className="rounded-full bg-stone-50 px-3 py-1 text-xs font-medium text-stone-600"
+                  className="rounded-full border border-transparent bg-stone-50 px-3 py-1 text-xs font-medium text-stone-600 transition-colors duration-200 hover:border-stone-300 hover:bg-white hover:text-ink"
                 >
                   {tag}
                 </li>
@@ -334,7 +340,7 @@ if (loading)
   </div>
 
   {/* Right Column */}
-  <div className="lg:col-span-4 space-y-8 sticky top-24">
+  <div ref={asideRef} className="reveal space-y-8 lg:col-span-4 sticky top-24">
 <div className="rounded-2xl border border-hairline bg-white p-8">
           {hasCapacity ? (
             <>

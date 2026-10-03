@@ -135,6 +135,22 @@ html {
   }
   }
 
+  /*
+   * Event poster entrance. A barely-there scale from just over 1, which reads as
+   * the image settling into place rather than as an animation happening to it.
+   * Opacity and transform only, so the decode never blocks layout.
+   */
+  @keyframes poster-in {
+  from {
+    opacity: 0;
+    transform: scale(1.035);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+  }
+
 
 
 .rise {
