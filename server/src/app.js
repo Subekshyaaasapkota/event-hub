@@ -13,6 +13,7 @@ import registrationRoute from "./routes/registration.js";
 import clubs from "./routes/clubs.js";
 import admin from "./routes/admin.js";
 import payment from "./routes/payment.js";
+import contact from "./routes/contact.js";
 
 dotenv.config();
 
@@ -72,6 +73,7 @@ app.use("/api/registrations", registrationRoute);
 app.use("/api/clubs", clubs);
 app.use("/api/admin", admin);
 app.use("/api/payments", payment);
+app.use("/api/contact", contact);
 
 // 404 handler for undefined routes
 app.use((req, res) => {

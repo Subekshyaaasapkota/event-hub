@@ -27,16 +27,10 @@ import {
   Eye,
   DollarSign,
 } from "lucide-react";
+import { NO_IMAGE_PLACEHOLDER, getImageUrlOrPlaceholder } from "../../utils/imageUrl";
+
 import useAdmin from "../../hooks/useAdmin";
 import Footer from "../../components/common/Footer";
-
-// Normalize poster URLs
-const normalizePoster = (poster) => {
-  if (!poster) return null;
-  if (poster.startsWith("http")) return poster;
-  const BASE_URL = import.meta.env.VITE_BASE_API_URL || "http://localhost:5000";
-  return `${BASE_URL}${poster}`;
-};
 
 const AdminEventDetails = () => {
   const { id } = useParams();
@@ -219,14 +213,16 @@ const AdminEventDetails = () => {
 
   {/* Event Image */}
   <div className="relative aspect-video rounded-2xl overflow-hidden shadow-lg border border-slate-200">
-  <img
-  src={
-  normalizePoster(event.poster) ||
-  "https://via.placeholder.com/1200x600?text=No+Image"
-  }
-  alt={event.title}
-  className="w-full h-full object-cover"
-  />
+<img
+    src={getImageUrlOrPlaceholder(event.poster)}
+    alt={event.title}
+    className="w-full h-full object-cover"
+    onError={(e) => {
+    // A Cloudinary URL can 404 after a folder is renamed, so fall back too.
+    e.target.onerror = null;
+    e.target.src = NO_IMAGE_PLACEHOLDER;
+    }}
+    />
   <div className="absolute top-4 right-4">
   <span
   className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${

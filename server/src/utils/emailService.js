@@ -10,6 +10,89 @@ const getClient = () => {
 // Sender address. Must be a verified Resend domain in production.
 const FROM_EMAIL = process.env.EMAIL_FROM || "EventHub <onboarding@resend.dev>";
 
+/**
+ * Escape a value before interpolating it into the HTML body below. The contact
+ * form takes free text from the public internet, so a message containing
+ * <script> or a stray & must not be able to break the markup.
+ */
+const escapeHtml = (value) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+/**
+ * Forward a message from the public contact form to the site owner.
+ *
+ * Returns { success: false, error } when email is not configured rather than
+ * throwing, so the endpoint can decide whether that is a 502 or a 202.
+ */
+export const sendContactMessage = async ({ name, email, subject, message }) => {
+  const to = process.env.CONTACT_EMAIL || process.env.EMAIL_FROM;
+
+  if (!to) {
+    console.warn(
+      "CONTACT_EMAIL is not set - contact form message from",
+      email,
+      "was not delivered",
+    );
+    return { success: false, error: "CONTACT_EMAIL is not configured" };
+  }
+
+  const resend = getClient();
+  if (!resend) {
+    console.warn(
+      "RESEND_API_KEY is not set - contact form message from",
+      email,
+      "was not delivered",
+    );
+    return { success: false, error: "RESEND_API_KEY is not configured" };
+  }
+
+  const safe = {
+    name: escapeHtml(name),
+    email: escapeHtml(email),
+    subject: escapeHtml(subject),
+    message: escapeHtml(message).replace(/\n/g, "<br />"),
+  };
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to,
+      replyTo: email,
+      subject: `[EventHub contact] ${String(subject).slice(0, 120)}`,
+      html: `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e1e1e1; border-radius: 12px; overflow: hidden; color: #333;">
+        <div style="background-color: #6366f1; padding: 24px; text-align: center; color: white;">
+          <h1 style="margin: 0; font-size: 24px; letter-spacing: 1px;">EventHub</h1>
+        </div>
+        <div style="padding: 32px; line-height: 1.6;">
+          <h2 style="color: #1f2937; margin-top: 0;">New contact form message</h2>
+          <p><strong>From:</strong> ${safe.name} (${safe.email})</p>
+          <p><strong>Subject:</strong> ${safe.subject}</p>
+          <hr style="border: 0; border-top: 1px solid #f3f4f6; margin: 24px 0;">
+          <p style="white-space: normal;">${safe.message}</p>
+        </div>
+      </div>
+      `,
+    });
+
+    if (error) {
+      console.error(" Resend contact error:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log(" Resend: contact message sent. ID:", data.id);
+    return { success: true, messageId: data.id };
+  } catch (err) {
+    console.error(" Resend contact exception:", err.message);
+    return { success: false, error: err.message };
+  }
+};
+
 export const sendVerificationEmail = async (userEmail, clubName) => {
   const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173")
   .split(",")[0]

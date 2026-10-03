@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   BarChart3,
@@ -28,6 +28,27 @@ import {
 import useAuth from "../../hooks/useAuth";
 import useOrganizer from "../../hooks/useOrganizer";
 import ClubSidebar from "./ClubSidebar";
+
+// Module scope on purpose: declared inside the component this would be a fresh
+// array on every render, which defeats the useMemo calls that read it.
+const TREND_RANGES = [
+  { value: "7", label: "Last 7 Days", days: 7 },
+  { value: "30", label: "Last 30 Days", days: 30 },
+  { value: "all", label: "All Time", days: null },
+];
+
+// The chart plots day buckets and the headline card counts registrations, so
+// both have to agree on exactly which days are in range. Comparing instants
+// instead of day keys lets the two drift apart around midnight, hence this one
+// shared definition. `days` consecutive keys ending today (UTC).
+const getWindowDayKeys = (days) =>
+  [...Array(days)].map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (days - 1 - i));
+    return d.toISOString().split("T")[0];
+  });
+
+const toDayKey = (date) => date.toISOString().split("T")[0];
 
 const EventAnalytics = () => {
   const { loading: authLoading } = useAuth();
@@ -77,31 +98,78 @@ const EventAnalytics = () => {
   });
   }, [orgEvents, registrationCountByEvent]);
 
-  // Registration Trend Data (Last 7 Days)
-  const trendData = useMemo(() => {
-  if (!registrations) return [];
-  
-  const last7Days = [...Array(7)].map((_, i) => {
-  const d = new Date();
-  d.setDate(d.getDate() - (6 - i));
-  return d.toISOString().split('T')[0];
-  });
+  // Registration Trend Data.
+  // The range selector used to be a dead dropdown: no state, no onChange, and
+  // the series was always a hardcoded last 7 days regardless of what was
+  // selected.
+  const [trendRange, setTrendRange] = useState("7");
 
-  const countsByDay = registrations.reduce((acc, reg) => {
-  const date = new Date(reg.createdAt);
-  if (isNaN(date.getTime())) return acc;
-  const day = date.toISOString().split('T')[0];
-  acc[day] = (acc[day] || 0) + 1;
+  const trendData = useMemo(() => {
+  if (!registrations || registrations.length === 0) return [];
+
+  const range = TREND_RANGES.find((r) => r.value === trendRange) || TREND_RANGES[0];
+  const valid = registrations
+  .map((reg) => ({ reg, date: new Date(reg.createdAt) }))
+  .filter(({ date }) => !isNaN(date.getTime()));
+
+  if (range.days === null) {
+  // All Time: one bucket per month across the whole history.
+  const byMonth = valid.reduce((acc, { date }) => {
+  const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  acc[key] = (acc[key] || 0) + 1;
   return acc;
   }, {});
 
-  return last7Days.map(day => ({
-  name: new Date(day).toLocaleDateString('en-US', { weekday: 'short' }),
-  registrations: countsByDay[day] || 0,
-  fullDate: day
+  return Object.keys(byMonth)
+  .sort()
+  .map((key) => ({
+  name: new Date(`${key}-01T00:00:00`).toLocaleDateString("en-US", {
+  month: "short",
+  year: "2-digit",
+  }),
+  registrations: byMonth[key],
+  fullDate: key,
   }));
-  }, [registrations]);
+  }
 
+const days = getWindowDayKeys(range.days);
+
+  const countsByDay = valid.reduce((acc, { date }) => {
+    const day = toDayKey(date);
+    acc[day] = (acc[day] || 0) + 1;
+    return acc;
+  }, {});
+
+  return days.map((day) => ({
+  name: new Date(day).toLocaleDateString("en-US", {
+  weekday: range.days <= 7 ? "short" : undefined,
+  month: range.days > 7 ? "short" : undefined,
+  day: range.days > 7 ? "numeric" : undefined,
+  }),
+  registrations: countsByDay[day] || 0,
+  fullDate: day,
+  }));
+  }, [registrations, trendRange]);
+// Registrations inside the selected window, for the headline figures.
+  // Filters on the same day keys the chart buckets by (see getWindowDayKeys)
+  // so the number beside the chart can never disagree with what is plotted.
+  // Registrations with an unparseable date are excluded here as well, so an
+  // "All Time" total always matches the sum of the bars.
+  const scopedRegistrations = useMemo(() => {
+    if (!registrations) return [];
+
+    const withDates = registrations
+      .map((reg) => ({ reg, date: new Date(reg.createdAt) }))
+      .filter(({ date }) => !isNaN(date.getTime()));
+
+    const range = TREND_RANGES.find((r) => r.value === trendRange) || TREND_RANGES[0];
+    if (range.days === null) return withDates.map(({ reg }) => reg);
+
+    const inWindow = new Set(getWindowDayKeys(range.days));
+    return withDates
+      .filter(({ date }) => inWindow.has(toDayKey(date)))
+      .map(({ reg }) => reg);
+  }, [registrations, trendRange]);
   // Detailed Insights
   const peakDay = useMemo(() => {
   if (trendData.length === 0) return "N/A";
@@ -206,17 +274,31 @@ const EventAnalytics = () => {
 
   {/* Two Column Layout */}
   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-  {/* Main Chart Area Placeholder */}
-  <div className="lg:col-span-2 bg-white rounded-[2rem] p-8 border border-slate-200 shadow-sm space-y-6">
-  <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-  <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
-  <TrendingUp size={20} className="text-indigo-600" /> Registration Trends
-  </h3>
-  <select className="bg-slate-50 border border-slate-200 text-sm font-bold text-slate-600 rounded-xl px-4 py-2 outline-none focus:ring-2 ring-indigo-500/20">
-  <option>Last 30 Days</option>
-  <option>All Time</option>
-  </select>
-  </div>
+{/* Main Chart */}
+    <div className="lg:col-span-2 bg-white rounded-[2rem] p-8 border border-slate-200 shadow-sm space-y-6">
+    <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+    <div>
+    <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
+    <TrendingUp size={20} className="text-indigo-600" /> Registration Trends
+    </h3>
+    <p className="text-xs text-slate-400 font-medium mt-1">
+    {scopedRegistrations.length} registration
+    {scopedRegistrations.length === 1 ? "" : "s"} in this window
+    </p>
+    </div>
+    <select
+      value={trendRange}
+      onChange={(e) => setTrendRange(e.target.value)}
+      aria-label="Registration trend range"
+      className="bg-slate-50 border border-slate-200 text-sm font-bold text-slate-600 rounded-xl px-4 py-2 outline-none focus:ring-2 ring-indigo-500/20"
+    >
+      {TREND_RANGES.map((r) => (
+      <option key={r.value} value={r.value}>
+      {r.label}
+      </option>
+      ))}
+    </select>
+    </div>
   
   <div className="h-64 w-full">
   <ResponsiveContainer width="100%" height="100%">
