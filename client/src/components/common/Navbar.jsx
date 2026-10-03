@@ -43,6 +43,18 @@ const Navbar = () => {
   user?.club && !user.club.isVerified && user.club.status === "Pending";
   const isClubApproved = user?.club && user.club.isVerified;
 
+  // Reflects the account's actual standing. A student with a club application
+  // in review is not just a "Student", and saying so was the confusing part.
+  const roleLabel = isAdmin
+  ? "Administrator"
+  : isClubApproved
+  ? "Club Member"
+  : isClubPending
+  ? "Club Application Pending"
+  : user?.club?.status === "Rejected"
+  ? "Club Application Rejected"
+  : "Student";
+
   const navLinkClass = (path) =>
   `font-medium text-[15px] transition-all duration-300 ${
   location.pathname === path
@@ -196,8 +208,12 @@ const Navbar = () => {
   <span>{getDashboardText()}</span>
   </Link>
 
-  {/* Club Registration Button - Only show if user has no club and is not admin */}
-  {!user.club && !isAdmin && !isStudent && (
+  {/* Club Registration Button.
+      Shown to any signed-in user who has neither an approved club nor an
+      application still in review. This used to require !isStudent, which
+      meant the button never appeared, because every new account is a Student
+      and Students are exactly who needs to apply. */}
+  {!isAdmin && !isClubPending && !isClubApproved && (
   <Link
   to="/club/register"
   className="flex items-center gap-2 text-emerald-600 font-bold text-sm bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100 hover:bg-emerald-100 transition-all"
@@ -238,11 +254,7 @@ const Navbar = () => {
   <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-60 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
   <div className="px-4 py-3 bg-gray-50/50 border-b border-gray-100">
   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-  {isAdmin
-  ? "Administrator"
-  : isClub
-  ? "Club Member"
-  : "Student"}
+  {roleLabel}
   </p>
   <p className="text-sm font-bold text-slate-800 truncate">
   {user.name}
@@ -252,7 +264,7 @@ const Navbar = () => {
   {user.club.name}
   {!user.club.isVerified && (
   <span className="ml-1 text-amber-600">
-  (Pending)
+  ({user.club.status === "Rejected" ? "Rejected" : "Pending"})
   </span>
   )}
   </p>
