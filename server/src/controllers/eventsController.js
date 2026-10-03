@@ -1,6 +1,7 @@
 import eventService from "../services/eventService.js";
 import mongoose from "mongoose";
 import cloudinary from "../config/cloudinary.js";
+import { sendInvalidId } from "../utils/objectId.js";
 
 const addEvents = async (req, res) => {
   // console.log("\n [BACKEND] EVENT CREATE REQUEST ");
@@ -243,14 +244,19 @@ const getAllEvents = async (req, res) => {
 const getEventById = async (req, res) => {
   const eventId = req.params.id;
 
-  try {
-const event = await eventService.getEventById(eventId);
-  if (!event) return res.status(404).json({ error: "Event not found" });
+  // "/api/events/nearby" and friends land here via the /:id route. A string
+  // that is not an id cannot name an event, so answer 404 instead of letting
+  // the driver throw a CastError and reporting a 500 for a bad URL.
+  if (sendInvalidId(res, { what: "event", id: eventId })) return;
 
-  res.status(200).json(event);
+  try {
+    const event = await eventService.getEventById(eventId);
+    if (!event) return res.status(404).json({ error: "Event not found" });
+
+    res.status(200).json(event);
   } catch (error) {
-  console.error("getEventById error:", error.message);
-  res.status(500).json({ error: "Could not load this event" });
+    console.error("getEventById error:", error.message);
+    res.status(500).json({ error: "Could not load this event" });
   }
 };
 
@@ -259,9 +265,11 @@ const updateEvent = async (req, res) => {
   const userId = req.user.id;
   const updatedData = { ...req.body };
 
+  if (sendInvalidId(res, { what: "event", id: eventId })) return;
+
   try {
-  const event = await eventService.getEventById(eventId);
-  if (!event) return res.status(404).json({ error: "Event Not Found" });
+    const event = await eventService.getEventById(eventId);
+    if (!event) return res.status(404).json({ error: "Event Not Found" });
 
   if (event.createdBy.toString() !== userId) {
   return res
@@ -365,17 +373,19 @@ const deleteEvent = async (req, res) => {
   const eventId = req.params.id;
   const userId = req.user.id;
 
+  if (sendInvalidId(res, { what: "event", id: eventId })) return;
+
   try {
-  const event = await eventService.getEventById(eventId);
-  if (!event) return res.status(404).send("Event Not Found");
+    const event = await eventService.getEventById(eventId);
+    if (!event) return res.status(404).json({ error: "Event not found" });
 
-  if (event.createdBy.toString() !== userId) {
-  return res
-  .status(403)
-  .send("Unauthorized: You can only delete your own events");
-  }
+    if (event.createdBy.toString() !== userId) {
+      return res
+        .status(403)
+        .json({ error: "Unauthorized: You can only delete your own events" });
+    }
 
-await eventService.deleteEvent(eventId);
+    await eventService.deleteEvent(eventId);
     res.status(200).json({ message: "Event deleted successfully" });
   } catch (error) {
     console.error("deleteEvent error:", error.message);
