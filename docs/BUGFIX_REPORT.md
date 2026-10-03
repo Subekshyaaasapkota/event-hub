@@ -220,7 +220,96 @@ No `href="#"` placeholder links were found anywhere in the client.
 
 ---
 
-## 9. Verification
+## 9. The homepage and event cards
+
+The public homepage had been assembled out of filler that looked designed. None
+of it was wrong in a way a linter can catch, because every element rendered, but
+a lot of it was not true. *(`ef639e5`)*
+
+### Numbers that were not real
+
+The page claimed 120+ events hosted, 3,500+ students registered, 45+ active
+organizers and 12+ departments. The database at the time of this work holds
+**9 events and 16 users**. The four figures were hardcoded, animated up from
+zero on scroll, and presented as measurements. The stat band has been removed
+rather than corrected, because a homepage that has to invent its own traction has
+no honest metric to show yet.
+
+The four floating cards around the illustration were worse. They advertised
+`HackFest 2026` at `148 / 200 seats` and `CTF Challenge` with `Only 5 seats left!`.
+None of those events existed. Fabricated scarcity on invented events is the most
+damaging version of this problem, so all of it is gone.
+
+The eyebrow badge reading `Nepal's #1 IT Event Platform` is also unverifiable and
+has been dropped.
+
+### Decoration standing in for content
+
+Two radial glows, a dot-grid overlay with no canvas or map underneath it, a
+spinning dashed ring, three bobbing dots, and a hand-drawn SVG monitor. These
+now combine with `slideUp`, `float`, `bob`, `spin` and `pulse` keyframes to run
+**five infinite animations at once**, none of which had a reduced-motion escape.
+Motion is now one authored stagger on the event grid, transform and opacity
+only, and the global stylesheet neutralises it under `prefers-reduced-motion`.
+
+The hero's right column now holds a **Next up** panel listing the next three real
+upcoming events from the API, so the space carries information instead of filling
+it.
+
+### The interface could not be tabbed through
+
+There was no `:focus-visible` rule anywhere in the client, so keyboard focus
+moved invisibly through every page. There is now a visible ring on all focusable
+elements, applied only for keyboard interaction.
+
+### The event card was a div pretending to be a link
+
+`EventCard` was a `div` with an `onClick` and a `navigate()` call. It looked
+clickable and had `cursor-pointer`, but had no role, was not focusable, could not
+be opened with Enter, and could not be middle-clicked or opened in a new tab. It
+is now a single `Link`.
+
+The card also scaled to `1.03` on hover and `0.95` on press, which shifted its
+siblings in the grid every time the pointer crossed it, so the card moved out from
+under the cursor. The lift is now shadow and border, with the only movement being
+the poster inside a clipped box, which cannot affect layout. Each metadata row
+previously sat in its own bordered pill, nesting cards inside a card; those are
+now flat rows.
+
+### The homepage card was reading fields that do not exist
+
+`Home.jsx` carried its own private copy of `EventCard`, distinct from the shared
+one, and it read `seats` and `registeredCount`. The API returns
+`participantCount` and `currentParticipants`. Neither name it asked for exists,
+so its capacity bar was permanently `null` and **never rendered at all**. The
+homepage now uses the shared component, and the duplicate is gone.
+
+That card also defaulted capacity to `100` when the field was absent, then drew a
+progress bar against that invented figure. When capacity is genuinely unknown the
+card now says so rather than reporting a number.
+
+### Headings were rendered with fake weights
+
+`index.html` loaded Poppins at `400,500,600`, while the client uses `font-extrabold`
+(800) and `font-black` (900) in roughly 320 places. The browser was synthesising
+every heavy weight on the site. The real weights are now loaded, and Space
+Grotesk carries the display voice on marketing surfaces.
+
+### Verification for this pass
+
+- Client ESLint: clean.
+- Client production build: clean, 2639 modules, unchanged from before.
+- `impeccable detect` on `Home.jsx`, `EventCard.jsx` and `index.css`: no findings.
+- All three modules confirmed to compile in the running Vite dev server, and
+  confirmed to be served from `index.html` with both font requests present.
+- Confirmed in the built CSS that `--color-paper`, `--color-ink`, `--font-display`,
+  the `:focus-visible` rule, the `prefers-reduced-motion` block and the `rise`
+  keyframes were all emitted by Tailwind, so the tokens are real rather than
+  silently dropped classes.
+
+---
+
+## 10. Verification
 
 ### Automated
 
@@ -277,3 +366,13 @@ removed again and the counts re-checked afterwards.
 - Some accounts in the database look like manual test signups rather than
   seeded data. They were left in place rather than deleted, because they may
   be real accounts belonging to the project team.
+- Every seeded event poster is a generated `ui-avatars.com` avatar rather than a
+  real event image, so the event grid currently reads as unpopulated. The card
+  was designed to hold up without photography, but real posters are the single
+  biggest remaining visual improvement available.
+- The redesign covered `Home.jsx` and the shared `EventCard`. The other public
+  pages, and `HorizontalEventCard` (used only by `ClubEventListing`), still carry
+  the older indigo-on-white styling, so the site is not yet visually uniform.
+- No visual regression test or screenshot baseline exists, and the redesign was
+  verified by build output, module compilation and the design linter rather than
+  by eye, because no browser automation is installed in this project.
