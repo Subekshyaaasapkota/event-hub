@@ -45,7 +45,7 @@ const ClubSidebar = () => {
   const upcomingSection =
     upcomingEvents.length > 0 ? (
       <>
-        <p className="px-3 pb-2 pt-7 text-[11px] font-semibold uppercase tracking-wide text-stone-500">
+        <p className="px-3 pb-2 pt-7 text-[12px] font-semibold uppercase tracking-wide text-stone-500">
           Coming up
         </p>
         <ul className="space-y-0.5">

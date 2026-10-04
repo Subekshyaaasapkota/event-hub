@@ -28,7 +28,7 @@ const pillLink = (active) =>
     : "inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-full border border-hairline bg-white px-4 text-sm font-medium text-stone-600 transition-colors duration-200 hover:bg-stone-100 hover:text-ink";
 
 const SectionLabel = ({ children }) => (
-  <p className="px-3 pb-2 pt-7 text-[11px] font-semibold uppercase tracking-wide text-stone-500">
+  <p className="px-3 pb-2 pt-7 text-[12px] font-semibold uppercase tracking-wide text-stone-500">
     {children}
   </p>
 );
@@ -81,7 +81,7 @@ const AppSidebar = ({
             {title}
           </p>
           {subtitle ? (
-            <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-stone-500">
+            <p className="mt-1 text-[12px] font-semibold uppercase tracking-wide text-stone-500">
               {subtitle}
             </p>
           ) : null}
