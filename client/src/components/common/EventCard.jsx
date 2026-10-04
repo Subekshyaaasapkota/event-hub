@@ -222,7 +222,7 @@ const EventCard = ({
 
           <span
             className="mt-4 inline-flex items-center gap-1 text-[0.8125rem] font-semibold text-ink
-              transition-colors group-hover:text-indigo-700"
+              transition-colors group-hover:text-ink"
           >
             View details
             <ArrowUpRight
