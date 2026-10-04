@@ -1,5 +1,5 @@
 import express from "express";
-import auth from "../middlewares/auth.js";
+import auth, { optionalAuth } from "../middlewares/auth.js";
 import { uploadEventPoster, handleMulterError } from "../middlewares/upload.js";
 import {
   addEvents,
@@ -33,7 +33,7 @@ router.get("/", getAllEvents);
 
 router.patch("/integration/google-sheet/:id", auth, updateGoogleSheetLink);
 
-router.get("/:id", getEventById);
+router.get("/:id", optionalAuth, getEventById);
 
 router.put("/:id", auth, uploadEventPoster, handleMulterError, updateEvent);
 

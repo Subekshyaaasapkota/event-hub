@@ -77,16 +77,23 @@ const createEvent = async (data) => {
 };
 
 const getAllEvents = async () => {
-  return await Events.find().populate(
+  // Only published events belong on the public list. Without this filter a
+  // draft or cancelled event is served to anyone, which is the opposite of
+  // what the status badge claims. Matches getNearbyEvents, searchEvents and
+  // getRecommendedEvents, which all filter on status.
+  return await Events.find({ status: "published" }).populate(
   "organizer",
   "name logo district email website facebook github instagram twitter linkedin youtube",
   );
 };
 
 const getEventById = async (eventId) => {
+  // createdBy is the club owner's user id. Selecting it lets the controller
+  // tell whether the caller owns this event and may therefore see it while it
+  // is unpublished. It stays an ObjectId, it is not populated in turn.
   return await Events.findById(eventId).populate(
   "organizer",
-  "name logo district email website facebook github instagram twitter linkedin youtube",
+  "createdBy name logo district email website facebook github instagram twitter linkedin youtube",
   );
 };
 

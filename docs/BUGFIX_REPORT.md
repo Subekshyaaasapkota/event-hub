@@ -510,3 +510,65 @@ removed again and the counts re-checked afterwards.
   genuine history into the same list as upcoming events. Not fixed here: it
   is a product decision rather than a defect, and changing it needs a decision
   on what the public list should show.
+  ### Fixed: unpublished events were visible to the public
+
+  Found while writing the developer documentation, by reading the read paths
+  rather than the write paths.
+
+  **The public event list returned unpublished events.**
+  `eventService.getAllEvents` called `Events.find()` with no filter at all,
+  while `getNearbyEvents`, `searchEvents` and `getRecommendedEvents` all
+  filtered on `status: "published"`. The bare `GET /api/events` endpoint was
+  the only read path that did not, and it is the one the public Events page
+  uses. Because `seedDemoData` deliberately creates one `draft` event and one
+  `completed` event, the leak was immediately visible: the list served 9 events
+  where it should have served 7, and the draft was served to anonymous
+  visitors. A badge in `ManageEventDetails` reads "Draft (Not Visible)" for
+  exactly that event, so the app was contradicting its own interface.
+
+  `getAllEvents` now filters on `status: "published"`, matching every other
+  read path.
+
+  **The event detail page leaked drafts to anyone who knew the id.**
+  `GET /api/events/:id` had no auth middleware and no visibility check, so a
+  draft could be read directly even once the list was fixed. Fixed by adding
+  an `optionalAuth` pass-through middleware, which attaches `req.user` when a
+  usable token is present and stays out of the way when there is not, then
+  gating non-published events in the controller:
+
+  - published: served as before, no auth needed
+  - unpublished and the caller owns the event: served, so a club can still
+    review and edit its own draft
+  - unpublished and the caller is an Admin: served, so it can be moderated
+  - anything else: 404, the same answer as an event that does not exist, which
+    avoids confirming that an unpublished event is there at all
+
+  Two details were wrong on the first attempt and are worth recording, because
+  both would have silently disabled the ownership check and left admins as the
+  only people who could see a draft:
+
+  - The JWT payload carries `id` and `roles`, not `_id`, because `authService`
+    maps the user document down to a plain object before signing it. Comparing
+    against `_id` compares `undefined` and never matches.
+  - The owning user on a club is `createdBy`, not `user`, and it stays a plain
+    ObjectId because populate selects the field without expanding it in turn.
+
+  Verified against a live server on a spare port rather than by reading the
+  diff, with a second instance so the running dev server was never touched:
+
+  | caller | draft event | published event |
+  | --- | --- | --- |
+  | anonymous | 404 | 200 |
+  | unrelated student | 404 | 200 |
+  | owning club | 200 | 200 |
+  | admin | 200 | 200 |
+
+  And the bare list dropped from 9 events to 7, all `published`, on the same
+  database. The published event stayed reachable throughout, so the fix did
+  not cost the public anything it was entitled to.
+
+  Not fixed, and worth a decision: `Events.status` declares `draft`,
+  `cancelled` and `completed`, and no interface ever writes any of them. The
+  enum describes a lifecycle the application does not have yet. The status
+  filter added above is what makes those values safe to use when that
+  lifecycle is built.
