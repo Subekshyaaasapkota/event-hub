@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import useFocusTrap from "../../hooks/useFocusTrap";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Building2,
@@ -38,54 +39,74 @@ import { getImageUrl } from "../../utils/imageUrl";
 const itemBase =
   "relative flex flex-1 cursor-pointer flex-col items-center justify-center gap-1 px-1 py-2 transition-colors duration-200";
 
-const Sheet = ({ title, subtitle, avatar, onClose, children }) => (
-  <>
-  <div
-  className="fixed inset-0 z-[70] bg-ink/30 backdrop-blur-[2px]"
-  onClick={onClose}
-  aria-hidden="true"
-  />
+const Sheet = ({ title, subtitle, avatar, onClose, returnFocusRef, children }) => {
 
-  <div
-  role="dialog"
-  aria-modal="true"
-  aria-label={title}
-  className="fixed inset-x-0 bottom-0 z-[80] origin-bottom rounded-t-2xl border-t border-hairline bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-20px_50px_-24px_rgba(17,17,20,0.45)] transition-transform duration-200 ease-out motion-safe:animate-[sheet-up_220ms_cubic-bezier(0.22,1,0.36,1)]"
-  >
-  <div className="flex items-start justify-between gap-3 border-b border-hairline p-5">
-  <div className="flex min-w-0 items-center gap-3">
-  {avatar}
-  <div className="min-w-0">
-  <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
-  {subtitle}
-  </p>
-  <p className="truncate font-display text-base font-semibold text-ink">
-  {title}
-  </p>
-  </div>
-  </div>
+    // This sheet declared role=dialog and aria-modal, but focus never entered it
+    // and Tab walked straight out into the page behind. sheetRef was attached
+    // to an unclassed wrapper div outside the dialog, so it could not have
+    // trapped anything even in principle.
+const sheetRef = useFocusTrap(true, {
+      initialFocus: "[data-sheet-close]",
+      returnFocusRef,
+    });
 
-  <button
-  type="button"
-  onClick={onClose}
-  className="press inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-hairline text-stone-600 transition-colors duration-200 hover:bg-stone-50 hover:text-ink"
-  aria-label="Close"
-  >
-  <X size={16} aria-hidden="true" />
-  </button>
-  </div>
 
-  <div className="p-3">{children}</div>
-  </div>
-  </>
-);
+    return (
+    <>
+    <div
+    className="fixed inset-0 z-[70] bg-ink/30 backdrop-blur-[2px]"
+    onClick={onClose}
+    aria-hidden="true"
+    />
+
+    <div
+    ref={sheetRef}
+    role="dialog"
+    aria-modal="true"
+    aria-label={title}
+    className="fixed inset-x-0 bottom-0 z-[80] origin-bottom rounded-t-2xl border-t border-hairline bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-20px_50px_-24px_rgba(17,17,20,0.45)] transition-transform duration-200 ease-out motion-safe:animate-[sheet-up_220ms_cubic-bezier(0.22,1,0.36,1)]"
+    >
+    <div className="flex items-start justify-between gap-3 border-b border-hairline p-5">
+    <div className="flex min-w-0 items-center gap-3">
+    {avatar}
+    <div className="min-w-0">
+    <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
+    {subtitle}
+    </p>
+    <p className="truncate font-display text-base font-semibold text-ink">
+    {title}
+    </p>
+    </div>
+    </div>
+
+    <button
+    type="button"
+    data-sheet-close
+    onClick={onClose}
+    className="press inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-hairline text-stone-600 transition-colors duration-200 hover:bg-stone-50 hover:text-ink"
+    aria-label="Close"
+    >
+    <X size={16} aria-hidden="true" />
+    </button>
+    </div>
+
+    <div className="p-3">{children}</div>
+    </div>
+    </>
+    );
+  };
+
 
 const MobileTabBar = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const sheetRef = useRef(null);
+const [sheetOpen, setSheetOpen] = useState(false);
+    // The account tab that opens the sheet, passed down so focus returns here on
+    // close. Safari does not focus a button on click, so letting the trap capture
+    // document.activeElement would hand focus back to <body>.
+    const accountTriggerRef = useRef(null);
+
 
   const roles = user?.roles || [];
   const isAdmin = roles.includes(ROLES.ADMIN);
@@ -142,21 +163,22 @@ const MobileTabBar = () => {
   return location.pathname === to;
   };
 
-  useEffect(() => {
-  if (!sheetOpen) return;
+useEffect(() => {
+    if (!sheetOpen) return;
 
-  const onKeyDown = (event) => {
-  if (event.key === "Escape") setSheetOpen(false);
-  };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setSheetOpen(false);
+    };
 
-  document.addEventListener("keydown", onKeyDown);
-  document.body.style.overflow = "hidden";
+    // Escape only. Scroll locking is the trap's job, and it now restores
+    // whatever overflow the page had rather than assuming it was empty.
+    document.addEventListener("keydown", onKeyDown);
 
-  return () => {
-  document.removeEventListener("keydown", onKeyDown);
-  document.body.style.overflow = "";
-  };
+    return () => {
+    document.removeEventListener("keydown", onKeyDown);
+    };
   }, [sheetOpen]);
+
 
   const initial = user?.name?.charAt(0).toUpperCase();
 
@@ -192,6 +214,8 @@ const MobileTabBar = () => {
   <li key={label} className="flex-1">
   {action ? (
   <button
+ref={action ? accountTriggerRef : undefined}
+
   type="button"
   onClick={action}
   aria-expanded={sheetOpen}
@@ -237,9 +261,10 @@ const MobileTabBar = () => {
   </nav>
 
   {sheetOpen && (
-  <div ref={sheetRef}>
-  <Sheet
-  onClose={() => setSheetOpen(false)}
+<Sheet
+    onClose={() => setSheetOpen(false)}
+    returnFocusRef={accountTriggerRef}
+
   subtitle={isAdmin ? "Administrator" : isClubApproved ? "Club member" : "Student"}
   title={user?.name || "Account"}
   avatar={avatar}
@@ -295,9 +320,9 @@ const MobileTabBar = () => {
   Log out
   </button>
   </div>
-  </Sheet>
-  </div>
-  )}
+</Sheet>
+    )}
+
   </>
   );
 };
