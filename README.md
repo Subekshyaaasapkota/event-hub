@@ -93,6 +93,7 @@ EventHub/
 
  docs/
     USING-EVENTHUB.md  # Guide for running events, no code
+    DEVELOPING.md  # Architecture and API reference for contributors
     dummy-data.md  # What the seed script creates
     BUGFIX_REPORT.md  # Bugs found and fixed
 

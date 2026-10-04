@@ -572,3 +572,116 @@ removed again and the counts re-checked afterwards.
   enum describes a lifecycle the application does not have yet. The status
   filter added above is what makes those values safe to use when that
   lifecycle is built.
+  ### Fixed: the signed-in student view
+
+  #### The account dropdown had no z-index at all
+
+  `Navbar.jsx` put the account menu at `z-60`. Tailwind v4 in this project
+  does not emit a bare `z-60`, only the arbitrary form `z-[60]`, so the menu
+  had no z-index and stacked by DOM order instead of above the page.
+
+  This was checked against the built stylesheet rather than assumed, by listing
+  every class in `dist` that sets `z-index`:
+
+  ```
+  z-0  z-10  z-20  z-40  z-50  z-[60]  z-[70]  z-[80]  z-[90]
+  ```
+
+  Only the bracketed forms above 50 exist. `z-70`, `z-80` and `z-90` are dead
+  for the same reason. `MobileTabBar` and `FloatingCalendar` were already using
+  `z-[60]`, `z-[70]` and `z-[80]`, so the only broken one was the account menu,
+  now `z-[60]`.
+
+  #### The account menu declared a keyboard contract it did not honour
+
+  The dropdown and its three children used `role="menu"` and `role="menuitem"`
+  with no arrow key handling. `role="menu"` tells assistive technology to
+  expect arrow key navigation between items, and none was implemented, so the
+  markup promised behaviour a keyboard user did not get. It is a disclosure
+  rather than a menu, so it is one now: the trigger keeps `aria-expanded` and
+  gains `aria-controls`, and the roles are gone. Escape handling and focus
+  return, which were already there, are unchanged.
+
+  #### The student sidebar was a third variant of the same sidebar
+
+  `UserLayout` had its own sidebar: a fixed 288px white drawer, an indigo
+  wordmark, an active state of solid indigo with a large shadow, a purple
+  gradient avatar, a "Student Pro" caption, and a bell button that was wired to
+  nothing but carried an unread dot implying notifications existed. It also
+  reproduced the whole mobile drawer pattern with no Escape handling and no
+  focus trap, so the drawer could not be dismissed from the keyboard.
+
+  It now renders the same `AppSidebar` the club and admin consoles use, which
+  is parameterised by items and title. The drawer, the overlay and the
+  hamburger are gone rather than repaired, so there is no overlay to trap
+  anyone. This is the third time the same sidebar was written from scratch in
+  this repository, which is the argument for the shared component existing.
+
+  The header title was `uppercase italic`. The header is now 64px tall, which
+  is required rather than cosmetic: the mobile pill row inside `AppSidebar` is
+  sticky at `top-16`, so any other header height leaves a gap or overlaps it.
+
+  #### Dashboard and Profile were double padded
+
+  Both pages opened with their own `min-h-screen bg-paper pb-24` and
+  `mx-auto w-full max-w-5xl px-5 pt-10 sm:px-8 lg:pt-14`. Once `UserLayout`
+  supplied a container, those wrappers nested inside it, so both pages carried
+  two viewports, two maximum widths and two sets of padding. Removed, along
+  with the `min-h-screen` that made each page its own scroll context.
+
+  #### The club dashboard sidebar was stacked above the content on desktop
+
+  `ClubDashboard` wrapped `ClubSidebar` in `min-h-screen bg-paper`. The five
+  other club pages use `min-h-screen flex bg-paper`. Without `flex` the rail is
+  an ordinary block box, so at `lg` and above it rendered in its own line above
+  the content instead of beside it. The rail is `hidden` below `lg`, which is
+  why this did not show up on a phone. Fixed by adding `flex`.
+
+  This was introduced in the commit that rebuilt that page, and it passed lint
+  and build. Neither tool can see a layout relationship, which is the whole
+  argument for checking rendered output rather than trusting a green build.
+
+  #### Every "coming up" link in the club sidebar returned a 404
+
+  `ClubSidebar` linked upcoming events to `/events/${event._id}`. There is no
+  such route. The event detail page is `/event/${event._id}`, singular. The
+  plural `/events` is the list page, which ignores the id. Corrected.
+
+  #### The registrations page was written in a register nobody speaks
+
+  `RegisteredEvents.jsx` is recorded here because the problems were not only
+  cosmetic:
+
+  - The search box had no `value` and no `onChange`. It was not a search box,
+    it was a picture of one, and the empty state told people to use it.
+  - "Enrollment Registry", "My Enrollments", "Access your participation
+    history, active session nodes, and subscription metadata", "Protocol Error
+    Detected", "Enrollment Cache Empty", "No active session nodes found in
+    your registry", "Initiate Node Search". Students do not have session nodes
+    or subscription metadata.
+  - A `direction` prop was passed to `EventCard`, which stopped reading it
+    when the card was rebuilt two commits earlier, so it had been dead.
+  - The container opened with `animate-in fade-in slide-in-from-bottom-4`,
+    three classes from `tailwindcss-animate`, which is not installed here.
+  - The grid and list toggles had no accessible name and 34px hit areas.
+  - Status text was 9px and 10px, and every non-Confirmed registration pulsed,
+    so a pending payment drew the eye as hard as a confirmed seat.
+  - The page hand-rolled poster URL normalisation instead of using
+    `getImageUrl` from utils, and had no `onError` fallback, so a broken poster
+    URL showed a browser broken-image icon.
+
+  Rewritten with working search over title, category, district and venue, an
+  All/Upcoming/Past filter derived from the event dates, a live result count,
+  and two distinct empty states, since "you have never registered for
+  anything" and "none of them match this search" need different replies.
+
+  No cancel or withdraw control was added. There is no `DELETE` route on
+  `/api/registrations`, so a cancel button would have been a dead control, and
+  a page for students to leave things they cannot actually leave is worse than
+  one that does not offer it.
+
+  #### Not fixed
+
+  The seeded demo data produces `ui-avatars` style posters, so a fresh install
+  looks emptier than a real one. That is a seed problem rather than a UI one and
+  the placeholder system already handles it honestly.
