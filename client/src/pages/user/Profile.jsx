@@ -1,369 +1,500 @@
-import React, { useState, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import {
-  User,
+  Building2,
+  Camera,
+  Home,
+  Loader2,
   Mail,
   MapPin,
-  Calendar,
-  Edit3,
-  ShieldCheck,
-  Activity,
-  Globe,
-  Fingerprint,
-  Zap,
-  Camera,
-  Save,
+  Pencil,
+  Plus,
   X,
-  Code,
-  Building,
-  Map,
-  Award,
 } from "lucide-react";
 import useAuth from "../../hooks/useAuth";
 import { getImageUrl } from "../../utils/imageUrl";
+import { NEPAL_DISTRICTS } from "../../utils/districts";
+
+const BIO_LIMIT = 250;
+
+const fieldLabel = "mb-2 block text-sm font-medium text-stone-600";
+const fieldInput =
+  "w-full rounded-2xl border border-hairline bg-white px-4 py-3 text-[15px] text-ink placeholder:text-stone-400 outline-none transition-colors focus:border-ink focus:ring-2 focus:ring-ink/15";
+
+// Defined at module scope: creating it inside Profile would remount every row
+// on each render, and the lint rule catches it.
+const DetailRow = ({ icon: Icon, label, value }) => (
+  <div className="flex items-start gap-4 py-4">
+    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-hairline bg-white text-stone-500">
+      <Icon size={17} aria-hidden="true" />
+    </div>
+    <div className="min-w-0 flex-1">
+      <dt className="text-sm text-stone-500">{label}</dt>
+      <dd className="mt-0.5 break-words text-[15px] font-medium text-ink">
+        {value || <span className="font-normal text-stone-400">Not added yet</span>}
+      </dd>
+    </div>
+  </div>
+);
 
 const Profile = () => {
   const { user, updateProfile, loading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const fileInputRef = useRef(null);
-
-  // Form State
-  const [editData, setEditData] = useState({
-  name: "",
-  address: "",
-  district: "",
-  college: "",
-  bio: "",
-  interestedSkills: [],
-  });
-
   const [newSkill, setNewSkill] = useState("");
   const [previewImage, setPreviewImage] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
+  const fileInputRef = useRef(null);
 
-  // Re-seed the form whenever the loaded user changes. Adjusting state during
-  // render (rather than in an effect) avoids an extra cascading render.
+  const [editData, setEditData] = useState({
+    name: "",
+    address: "",
+    district: "",
+    college: "",
+    bio: "",
+    interestedSkills: [],
+  });
+
+  // Re-seed whenever the loaded user changes, so the form always opens on the
+  // saved values instead of whatever was typed last time.
   const [prevUser, setPrevUser] = useState(user);
   if (user !== prevUser) {
-  setPrevUser(user);
-  if (user) {
-  setEditData({
-  name: user.name || "",
-  address: user.address || "",
-  district: user.district || "",
-  college: user.college || "",
-  bio: user.bio || "",
-  interestedSkills: user.interestedSkills || [],
-  });
-  if (user.profilePicture) {
-  setPreviewImage(getImageUrl(user.profilePicture));
-  }
-  }
+    setPrevUser(user);
+    if (user) {
+      setEditData({
+        name: user.name || "",
+        address: user.address || "",
+        district: user.district || "",
+        college: user.college || "",
+        bio: user.bio || "",
+        interestedSkills: user.interestedSkills || [],
+      });
+      setPreviewImage(user.profilePicture ? getImageUrl(user.profilePicture) : null);
+    }
   }
 
-  const handleInputChange = (e) => {
-  const { name, value } = e.target;
-  setEditData((prev) => ({ ...prev, [name]: value }));
+  // A district saved before the list was updated, or typed in earlier, still
+  // has to stay selectable. Without this, opening the page would quietly offer
+  // a different value and saving would overwrite it.
+  const districtGroups = useMemo(() => {
+    const known = new Set(Object.values(NEPAL_DISTRICTS).flat());
+    const current = user?.district;
+    if (current && !known.has(current)) {
+      return { ...NEPAL_DISTRICTS, Elsewhere: [current] };
+    }
+    return NEPAL_DISTRICTS;
+  }, [user?.district]);
+
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setEditData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e) => {
-  const file = e.target.files[0];
-  if (file) {
-  setSelectedFile(file);
-  const reader = new FileReader();
-  reader.onloadend = () => setPreviewImage(reader.result);
-  reader.readAsDataURL(file);
-  }
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setSelectedFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setPreviewImage(reader.result);
+    reader.readAsDataURL(file);
   };
 
   const addSkill = () => {
-  if (
-  newSkill.trim() &&
-  !editData.interestedSkills.includes(newSkill.trim())
-  ) {
-  setEditData((prev) => ({
-  ...prev,
-  interestedSkills: [...prev.interestedSkills, newSkill.trim()],
-  }));
-  setNewSkill("");
-  }
+    const skill = newSkill.trim();
+    if (!skill) return;
+    if (editData.interestedSkills.includes(skill)) {
+      toast.error("That skill is already on your list.");
+      return;
+    }
+    setEditData((prev) => ({
+      ...prev,
+      interestedSkills: [...prev.interestedSkills, skill],
+    }));
+    setNewSkill("");
   };
 
-  const removeSkill = (skillToRemove) => {
-  setEditData((prev) => ({
-  ...prev,
-  interestedSkills: prev.interestedSkills.filter(
-  (s) => s !== skillToRemove,
-  ),
-  }));
+  const removeSkill = (skill) => {
+    setEditData((prev) => ({
+      ...prev,
+      interestedSkills: prev.interestedSkills.filter((item) => item !== skill),
+    }));
   };
 
   const handleSave = async () => {
-  const formData = new FormData();
-  Object.keys(editData).forEach((key) => {
-  if (key === "interestedSkills") {
-  formData.append(key, JSON.stringify(editData[key]));
-  } else {
-  formData.append(key, editData[key]);
-  }
-  });
+    const trimmed = {
+      ...editData,
+      name: editData.name.trim(),
+      college: editData.college.trim(),
+      address: editData.address.trim(),
+      district: editData.district,
+      bio: editData.bio.trim(),
+      interestedSkills: editData.interestedSkills.map((skill) => skill.trim()),
+    };
 
-  if (selectedFile) formData.append("profilePicture", selectedFile);
+    if (!trimmed.name) {
+      toast.error("Your name cannot be empty.");
+      return;
+    }
 
-  const res = await updateProfile(formData);
-  if (res.success) {
-  setIsEditing(false);
-  setSelectedFile(null);
-  toast.success("Profile synchronized!");
-  } else {
-  toast.error(res.message);
-  }
+    const formData = new FormData();
+    Object.keys(trimmed).forEach((key) => {
+      if (key === "interestedSkills") {
+        formData.append(key, JSON.stringify(trimmed[key]));
+      } else {
+        formData.append(key, trimmed[key]);
+      }
+    });
+
+    if (selectedFile) formData.append("profilePicture", selectedFile);
+
+    const res = await updateProfile(formData);
+    if (res.success) {
+      setIsEditing(false);
+      setSelectedFile(null);
+      toast.success("Profile updated.");
+    } else {
+      toast.error(res.message);
+    }
   };
 
+  const cancelEdit = () => {
+    setIsEditing(false);
+    setNewSkill("");
+    setSelectedFile(null);
+    setPreviewImage(user?.profilePicture ? getImageUrl(user.profilePicture) : null);
+  };
+
+const displaySkills = isEditing ? editData.interestedSkills : user?.interestedSkills || [];
+  const bioLength = (isEditing ? editData.bio : user?.bio || "").length;
+
   return (
-  <div className="grid lg:grid-cols-12 gap-10 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
-  {/* LEFT COLUMN: Profile Card */}
-  <div className="lg:col-span-4">
-  <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-indigo-100/50 overflow-hidden border border-slate-100 sticky top-8">
-  <div
-  onClick={() => isEditing && fileInputRef.current.click()}
-  className={`relative h-80 group/img overflow-hidden transition-transform duration-700 ${isEditing ? "cursor-pointer" : ""}`}
-  >
-  <div className="absolute inset-0 z-10 bg-black/0 group-hover/img:bg-black/10 transition-colors duration-500" />
-  {previewImage ? (
-  <img
-  src={previewImage}
-  alt="Profile"
-  className="w-full h-full object-cover transition-transform duration-700 group-hover/img:scale-110"
-  />
-  ) : (
-  <div className="w-full h-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-9xl transition-transform duration-700 group-hover/img:scale-110">
-  {user?.name?.charAt(0).toUpperCase()}
-  </div>
-  )}
 
-  {isEditing && (
-  <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-sm opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none">
-  <Camera size={40} className="text-white" />
-  </div>
-  )}
-  <input
-  type="file"
-  ref={fileInputRef}
-  hidden
-  onChange={handleFileChange}
-  accept="image/*"
-  />
-  </div>
+    <div className="min-h-screen bg-paper pb-24">
+      <div className="mx-auto w-full max-w-5xl px-5 pt-10 sm:px-8 lg:pt-14">
+        <header className="flex flex-col gap-6 border-b border-hairline pb-8 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+              Profile
+            </h1>
+            <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-stone-600">
+              These details travel with your registrations. Keep them accurate so
+              organisers know who they are admitting.
+            </p>
+          </div>
 
-  <div className="p-10 space-y-8">
-  <div className="text-center">
-  {isEditing ? (
-  <input
-  type="text"
-  name="name"
-  value={editData.name}
-  onChange={handleInputChange}
-  className="w-full text-center text-2xl font-black text-slate-800 tracking-tighter uppercase italic bg-slate-50 border-b-2 border-indigo-600 py-1 outline-none"
-  placeholder="Your name"
-  />
-  ) : (
-  <h2 className="text-3xl font-black text-slate-800 tracking-tighter uppercase italic">
-  {user?.name}
-  </h2>
-  )}
-  <p className="text-[11px] font-bold text-slate-400 mt-1">
-  {user?.email}
-  </p>
-  </div>
+          {!isEditing ? (
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="press inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-ink px-6 py-3.5 font-semibold text-paper transition-colors duration-200 hover:bg-stone-800"
+            >
+              <Pencil size={16} aria-hidden="true" />
+              Edit profile
+            </button>
+          ) : null}
+        </header>
 
-  <div className="h-[1px] w-full bg-slate-50" />
+        <div className="mt-10 grid gap-8 lg:grid-cols-[19rem_1fr]">
+          {/* Identity */}
+          <section className="lg:sticky lg:top-8 lg:self-start">
+            <div className="rounded-3xl border border-hairline bg-white p-6">
+              <div className="flex items-center gap-4">
+                {previewImage ? (
+                  <img
+                    src={previewImage}
+                    alt=""
+                    className="h-20 w-20 shrink-0 rounded-2xl object-cover"
+                  />
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-ink font-display text-3xl font-semibold text-paper"
+                  >
+                    {user?.name?.trim().charAt(0).toUpperCase() || "?"}
+                  </div>
+                )}
 
-  {/* Social Metadata placeholders */}
-  <div className="flex justify-center gap-4">
-  {[Globe, Mail, ShieldCheck].map((Icon, idx) => (
-  <div
-  key={idx}
-  className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer border border-slate-100"
-  >
-  <Icon size={18} />
-  </div>
-  ))}
-  </div>
+                <div className="min-w-0">
+                  <h2 className="truncate font-display text-xl font-semibold tracking-tight text-ink">
+                    {user?.name || "Your name"}
+                  </h2>
+                  <p className="mt-0.5 flex items-center gap-1.5 truncate text-sm text-stone-500">
+                    <Mail size={14} aria-hidden="true" />
+                    {user?.email}
+                  </p>
+                </div>
+              </div>
 
-  <div className="pt-4 space-y-3">
-  {!isEditing ? (
-  <button
-  onClick={() => setIsEditing(true)}
-  className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
-  >
-  <Edit3 size={14} /> Update Node Meta
-  </button>
-  ) : (
-  <>
-  <button
-  onClick={handleSave}
-  disabled={loading}
-  className="w-full py-5 bg-linear-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-rose-200 transition-all active:scale-95 disabled:opacity-80 flex items-center justify-center gap-3 overflow-hidden relative"
-  >
-  {loading ? (
-  <>
-  <Activity
-  size={16}
-  className="animate-spin text-white/80"
-  />
-  <span className="animate-pulse">
-  Syncing Node Meta...
-  </span>
-  <div className="absolute inset-0 bg-white/10 animate-[pulse_1s_infinite]" />
-  </>
-  ) : (
-  "Save & Sync Profile"
-  )}
-  </button>
-  <button
-  onClick={() => setIsEditing(false)}
-  className="w-full py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-500 transition-colors"
-  >
-  Abort Changes
-  </button>
-  </>
-  )}
-  </div>
-  </div>
-  </div>
-  </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="sr-only"
+                onChange={handleFileChange}
+                accept="image/*"
+                tabIndex={-1}
+              />
 
-  {/* RIGHT COLUMN: Supplementary Dash */}
-  <div className="lg:col-span-8 space-y-8">
-  {/* About Section */}
-  <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-100/50 border border-slate-100 p-10 space-y-6">
-  <div className="flex items-center gap-3 text-indigo-500">
-  <Fingerprint size={20} />
-  <h3 className="text-xl font-black text-slate-800 tracking-tight italic">
-  Your Biography
-  </h3>
-  </div>
-  {isEditing ? (
-  <textarea
-  name="bio"
-  value={editData.bio}
-  onChange={handleInputChange}
-  rows="4"
-  className="w-full bg-slate-50 border-b-2 border-indigo-600 p-4 text-sm font-bold text-slate-700 outline-none transition-all resize-none italic rounded-xl"
-  placeholder="Describe your node mission..."
-  />
-  ) : (
-  <p className="text-sm font-medium text-slate-500 leading-relaxed italic">
-  {user?.bio || "No biography protocol initialized yet."}
-  </p>
-  )}
-  </div>
+              {isEditing ? (
+                <div className="mt-5 flex flex-col gap-3">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="press inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-hairline bg-white px-5 py-3 text-sm font-medium text-ink transition-colors duration-200 hover:bg-stone-50"
+                  >
+                    <Camera size={16} aria-hidden="true" />
+                    Change photo
+                  </button>
+                  <p className="text-center text-xs text-stone-500">
+                    {selectedFile ? selectedFile.name : "JPG or PNG, up to 5 MB."}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </section>
 
-  {/* Combined Identity Vectors Card */}
-  <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-100/50 border border-slate-100 overflow-hidden">
-  <div className="p-8 px-10 border-b border-slate-50 flex items-center justify-between">
-  <h3 className="text-xl font-black text-slate-800 tracking-tight italic">
-  Additional Identity
-  </h3>
-  <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 border border-slate-100">
-  <Globe size={14} />
-  </div>
-  </div>
+          <div className="space-y-8">
+            {/* Details */}
+            <section className="rounded-3xl border border-hairline bg-white p-6 sm:p-8">
+              <h3 className="font-display text-lg font-semibold tracking-tight text-ink">
+                Details
+              </h3>
 
-  <div className="p-10 space-y-12">
-  {/* Hub & Zone Row */}
-  <div className="grid md:grid-cols-2 gap-10">
-  <div className="group">
-  <label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 mb-3 block px-1">
-  College
-  </label>
-  {isEditing ? (
-  <input
-  type="text"
-  name="college"
-  value={editData.college}
-  onChange={handleInputChange}
-  className="w-full bg-slate-50 border-b-2 border-indigo-600 py-3 px-4 text-sm font-bold text-slate-700 outline-none rounded-xl"
-  />
-  ) : (
-  <div className="flex items-center gap-3 px-1">
-  <Building size={16} className="text-indigo-400" />
-  <p className="text-base font-black text-slate-700 uppercase tracking-tight italic">
-  {user?.college || "N/A"}
-  </p>
-  </div>
-  )}
-  </div>
-  <div className="group">
-  <label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 mb-3 block px-1">
-  District
-  </label>
-  {isEditing ? (
-  <input
-  type="text"
-  name="district"
-  value={editData.district}
-  onChange={handleInputChange}
-  className="w-full bg-slate-50 border-b-2 border-indigo-600 py-3 px-4 text-sm font-bold text-slate-700 outline-none rounded-xl"
-  />
-  ) : (
-  <div className="flex items-center gap-3 px-1">
-  <Map size={16} className="text-indigo-400" />
-  <p className="text-base font-black text-slate-700 uppercase tracking-tight italic">
-  {user?.district || "Nepal Core"}
-  </p>
-  </div>
-  )}
-  </div>
-  </div>
+              {isEditing ? (
+                <div className="mt-6 space-y-5">
+                  <div>
+                    <label htmlFor="profile-name" className={fieldLabel}>
+                      Full name
+                    </label>
+                    <input
+                      id="profile-name"
+                      name="name"
+                      type="text"
+                      value={editData.name}
+                      onChange={handleInputChange}
+                      className={fieldInput}
+                      placeholder="Your name"
+                    />
+                  </div>
 
-  {/* Tech Vectors row */}
-  <div className="space-y-6 pt-8 border-t border-slate-50">
-  <label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 block px-1">
-  Interested Skills
-  </label>
-  <div className="flex flex-wrap gap-2.5">
-  {editData.interestedSkills.map((skill, index) => (
-  <div
-  key={index}
-  className="px-6 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 border border-indigo-100 group"
-  >
-  {skill}
-  {isEditing && (
-  <X
-  size={14}
-  className="cursor-pointer text-indigo-300 hover:text-rose-500 transition-colors"
-  onClick={() => removeSkill(skill)}
-  />
-  )}
-  </div>
-  ))}
-  </div>
+                  <div>
+                    <label htmlFor="profile-college" className={fieldLabel}>
+                      College or institution
+                    </label>
+                    <input
+                      id="profile-college"
+                      name="college"
+                      type="text"
+                      value={editData.college}
+                      onChange={handleInputChange}
+                      className={fieldInput}
+                      placeholder="e.g. Pulchowk Campus"
+                    />
+                  </div>
 
-  {isEditing && (
-  <div className="flex gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-100">
-  <input
-  type="text"
-  value={newSkill}
-  onChange={(e) => setNewSkill(e.target.value)}
-  onKeyPress={(e) => e.key === "Enter" && addSkill()}
-  placeholder="Injected skill name..."
-  className="flex-1 bg-transparent px-4 text-xs font-black text-slate-700 outline-none"
-  />
-  <button
-  onClick={addSkill}
-  className="px-8 py-3 bg-indigo-600 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-900 transition-all shadow-lg shadow-indigo-100"
-  >
-  Inject
-  </button>
-  </div>
-  )}
-  </div>
-  </div>
-  </div>
-  </div>
-  </div>
+                  <div>
+                    <label htmlFor="profile-district" className={fieldLabel}>
+                      District
+                    </label>
+                    <select
+                      id="profile-district"
+                      name="district"
+                      value={editData.district}
+                      onChange={handleInputChange}
+                      className={fieldInput}
+                    >
+                      <option value="">Select a district</option>
+                      {Object.entries(districtGroups).map(([province, districts]) => (
+                        <optgroup key={province} label={province}>
+                          {districts.map((item) => (
+                            <option key={item} value={item}>
+                              {item}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="profile-address" className={fieldLabel}>
+                      Address
+                    </label>
+                    <input
+                      id="profile-address"
+                      name="address"
+                      type="text"
+                      value={editData.address}
+                      onChange={handleInputChange}
+                      className={fieldInput}
+                      placeholder="Street, municipality"
+                      autoComplete="street-address"
+                    />
+                  </div>
+
+                  <p className="text-xs text-stone-500">
+                    Your email address is used to sign in and cannot be changed here.
+                  </p>
+                </div>
+              ) : (
+                <dl className="mt-2 divide-y divide-hairline">
+                  <DetailRow
+                    icon={Mail}
+                    label="Email"
+                    value={user?.email}
+                  />
+                  <DetailRow
+                    icon={Building2}
+                    label="College or institution"
+                    value={user?.college}
+                  />
+                  <DetailRow
+                    icon={MapPin}
+                    label="District"
+                    value={user?.district}
+                  />
+                  <DetailRow
+                    icon={Home}
+                    label="Address"
+                    value={user?.address}
+                  />
+                </dl>
+              )}
+            </section>
+
+            {/* Bio */}
+            <section className="rounded-3xl border border-hairline bg-white p-6 sm:p-8">
+              <div className="flex items-baseline justify-between gap-4">
+                <h3 className="font-display text-lg font-semibold tracking-tight text-ink">
+                  About you
+                </h3>
+                {bioLength > 0 ? (
+                  <span className="shrink-0 text-xs tabular-nums text-stone-400">
+                    {bioLength}/{BIO_LIMIT}
+                  </span>
+                ) : null}
+              </div>
+
+              {isEditing ? (
+                <div className="mt-6">
+                  <label htmlFor="profile-bio" className="sr-only">
+                    About you
+                  </label>
+                  <textarea
+                    id="profile-bio"
+                    name="bio"
+                    rows={4}
+                    maxLength={BIO_LIMIT}
+                    value={editData.bio}
+                    onChange={handleInputChange}
+                    className={`${fieldInput} resize-y`}
+                    placeholder="A sentence or two about what you are into."
+                  />
+                </div>
+              ) : (
+                <p className="mt-4 whitespace-pre-line text-[15px] leading-relaxed text-stone-600">
+                  {user?.bio || (
+                    <span className="text-stone-400">
+                      Nothing written yet.
+                    </span>
+                  )}
+                </p>
+              )}
+            </section>
+
+            {/* Skills */}
+            <section className="rounded-3xl border border-hairline bg-white p-6 sm:p-8">
+              <h3 className="font-display text-lg font-semibold tracking-tight text-ink">
+                Skills
+              </h3>
+
+              {displaySkills.length > 0 ? (
+                <ul className="mt-5 flex flex-wrap gap-2.5">
+                  {displaySkills.map((skill) => (
+                    <li
+                      key={skill}
+                      className="inline-flex items-center gap-2 rounded-full border border-hairline bg-paper py-2 pl-4 pr-2 text-sm text-ink"
+                    >
+                      {skill}
+                      {isEditing ? (
+                        <button
+                          type="button"
+                          onClick={() => removeSkill(skill)}
+                          aria-label={`Remove ${skill}`}
+                          className="press flex h-7 w-7 items-center justify-center rounded-full text-stone-400 transition-colors duration-200 hover:bg-stone-200 hover:text-ink"
+                        >
+                          <X size={14} aria-hidden="true" />
+                        </button>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-4 text-[15px] text-stone-400">
+                  No skills added yet.
+                </p>
+              )}
+
+              {isEditing ? (
+                <div className="mt-5 flex gap-3">
+                  <label htmlFor="profile-skill" className="sr-only">
+                    Add a skill
+                  </label>
+                  <input
+                    id="profile-skill"
+                    type="text"
+                    value={newSkill}
+                    onChange={(event) => setNewSkill(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addSkill();
+                      }
+                    }}
+                    className={fieldInput}
+                    placeholder="e.g. Python"
+                  />
+                  <button
+                    type="button"
+                    onClick={addSkill}
+                    className="press inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-hairline bg-white px-5 font-medium text-ink transition-colors duration-200 hover:bg-stone-50"
+                  >
+                    <Plus size={16} aria-hidden="true" />
+                    Add
+                  </button>
+                </div>
+              ) : null}
+            </section>
+
+            {isEditing ? (
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  disabled={loading}
+                  className="press inline-flex items-center justify-center rounded-2xl px-6 py-3.5 font-medium text-stone-600 transition-colors duration-200 hover:bg-stone-200 hover:text-ink"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={loading}
+                  className="press inline-flex items-center justify-center gap-2 rounded-2xl bg-ink px-6 py-3.5 font-semibold text-paper transition-colors duration-200 hover:bg-stone-800 disabled:opacity-60"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                      Saving
+                    </>
+                  ) : (
+                    "Save changes"
+                  )}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
