@@ -388,7 +388,7 @@ This project is licensed under the **ISC License** - see the [LICENSE](LICENSE) 
 
 ## Copyright
 
-© Shubham Gyawali, All rights reserved.
+© Arun Neupane, All rights reserved.
 
 ---
 

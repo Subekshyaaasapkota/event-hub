@@ -279,7 +279,7 @@ const FAQItem = ({ q, a, index }) => {
   const panelId = `faq-panel-${index}`;
 
   return (
-  <div className="border-b border-hairline last:border-0" style={{ "--reveal-delay": `${Math.min(index, 6) * 40}ms` }}>
+  <div className="border-b border-hairline last:border-0">
   <h3>
   <button
   type="button"
@@ -376,12 +376,11 @@ export default function SupportCenter() {
 
   <h1
   className="font-display text-3xl font-semibold leading-tight tracking-tight text-ink md:text-4xl"
-  style={{ "--reveal-delay": "60ms" }}
   >
   {activeTab === "faq" ? "Frequently Asked Questions" : activeTab === "terms" ? "Terms & Conditions" : "Privacy Policy"}
   </h1>
 
-  <div className="mt-6 flex flex-col justify-between gap-6 md:flex-row md:items-end" style={{ "--reveal-delay": "120ms" }}>
+  <div className="mt-6 flex flex-col justify-between gap-6 md:flex-row md:items-end">
   <p className="max-w-xl text-sm leading-relaxed text-stone-600">
   {activeTab === "faq"
   ? "Straight answers about registering, hosting and attending. Search below, or jump to a topic."
@@ -541,11 +540,10 @@ export default function SupportCenter() {
 
   {/* TRUST_BADGES was declared in this file but never rendered anywhere */}
     <ul className="mb-14 grid gap-3 sm:grid-cols-2">
-    {TRUST_BADGES.map((badge, i) => (
+    {TRUST_BADGES.map((badge) => (
     <li
     key={badge}
     className="flex items-center gap-3 rounded-2xl border border-hairline bg-white px-4 py-3.5 text-sm font-medium text-ink"
-    style={{ "--reveal-delay": `${i * 60}ms` }}
     >
     <CheckCircle size={16} className="shrink-0 text-ink-soft" aria-hidden="true" />
     {badge}
