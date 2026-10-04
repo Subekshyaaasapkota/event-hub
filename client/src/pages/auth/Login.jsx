@@ -65,7 +65,7 @@ const Login = () => {
           <p className="mt-2 text-stone-600">Sign in to manage your Event journey</p>
         </div>
 
-        <div className="reveal rounded-4xl border border-hairline bg-white p-8 shadow-[0_20px_45px_-28px_rgba(17,17,20,0.35)] md:p-10">
+        <div className="rounded-4xl border border-hairline bg-white p-8 shadow-[0_20px_45px_-28px_rgba(17,17,20,0.35)] md:p-10">
           {serverError && (
             <div
               id="login-server-error"

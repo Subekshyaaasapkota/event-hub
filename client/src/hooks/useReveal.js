@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+﻿import { useCallback, useEffect, useRef } from "react";
 
 /**
  * Reveals content once as it scrolls into view.
@@ -24,14 +24,27 @@ const useReveal = ({
   rootMargin = "0px 0px -10% 0px",
   visibleClass = "is-visible",
 } = {}) => {
-  const ref = useRef(null);
+  // A callback ref, not an object ref. An effect with [] deps runs once on
+  // mount, but on a page that renders a loader until data arrives the element
+  // carrying `reveal` does not exist yet, so ref.current is null, no observer
+  // is created, and the content stays at opacity 0 forever. A callback ref
+  // fires when the node actually attaches, which is when observing has to
+  // start.
+  const nodeRef = useRef(null);
+  const observerRef = useRef(null);
 
-  useEffect(() => {
-    const node = ref.current;
-    if (!node) return;
+  const attach = useCallback((node) => {
+    observerRef.current?.disconnect();
+    observerRef.current = null;
 
-    // Without IntersectionObserver, or if it is already on screen, show the
-    // content. Leaving it at opacity 0 would hide it permanently.
+    if (!node) {
+      nodeRef.current = null;
+      return;
+    }
+    nodeRef.current = node;
+
+    // Without IntersectionObserver there is no way to know when to animate, so
+    // show the content rather than hide it forever.
     if (typeof IntersectionObserver === "undefined") {
       node.classList.add(visibleClass);
       return;
@@ -42,15 +55,18 @@ const useReveal = ({
         if (!entry.isIntersecting) return;
         node.classList.add(visibleClass);
         observer.disconnect();
+        observerRef.current = null;
       },
       { threshold, rootMargin },
     );
-
     observer.observe(node);
-    return () => observer.disconnect();
+    observerRef.current = observer;
   }, [threshold, rootMargin, visibleClass]);
 
-  return ref;
+  // Release the observer if the component unmounts while the node is attached.
+  useEffect(() => () => observerRef.current?.disconnect(), []);
+
+  return attach;
 };
 
 export default useReveal;

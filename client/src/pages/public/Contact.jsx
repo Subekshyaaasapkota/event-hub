@@ -115,7 +115,8 @@ const Contact = () => {
   </p>
   </section>
 
-  <section className="mx-auto mb-20 grid max-w-6xl gap-8 px-6 py-12 lg:grid-cols-12 lg:gap-10">
+<section className="mx-auto mb-20 grid max-w-6xl gap-8 px-6 pb-12 lg:grid-cols-12 lg:gap-10">
+
   {/* The form is the point of this page, so it gets 8 of 12 columns. The old
       split was 2/5 against 3/5, which left each name and email field about
       165px wide at tablet width and forced the two-column field row to

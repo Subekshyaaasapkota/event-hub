@@ -214,9 +214,9 @@ if (loading)
 
   return (
 <div className="flex min-h-screen flex-col bg-paper">
-      <main className="flex-1">
-        <HeroRef />
+<main className="flex-1">
         <div className="relative overflow-hidden pb-12 pt-24 lg:pb-20 lg:pt-32">
+
           <div className="mx-auto max-w-6xl px-6">
 
 <button

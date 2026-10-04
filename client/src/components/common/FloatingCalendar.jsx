@@ -50,14 +50,18 @@ const FloatingCalendar = ({ events = [] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState(null);
+const triggerRef = useRef(null);
   // initialFocus null focuses the panel itself, so its aria-label is announced
   // before any individual day. The trigger ref is passed explicitly because
   // Safari does not focus a button on click.
+  //
+  // Declared after triggerRef on purpose: reading a const before its
+  // initialisation throws at render, which lint and the build both accept.
   const dialogRef = useFocusTrap(isOpen, {
     initialFocus: null,
     returnFocusRef: triggerRef,
   });
-  const triggerRef = useRef(null);
+
 
   const month = currentDate.getMonth();
   const year = currentDate.getFullYear();
@@ -176,7 +180,8 @@ const FloatingCalendar = ({ events = [] }) => {
   // would otherwise stay in the tab order and the accessibility tree while
   // invisible. inert removes both without unmounting.
   inert={!isOpen}
-  className={`fixed inset-x-4 bottom-[calc(8.5rem+env(safe-area-inset-bottom))] z-[80] mx-auto max-w-sm origin-bottom rounded-2xl border border-hairline bg-white shadow-[0_24px_60px_-24px_rgba(17,17,20,0.45)] outline-none transition-[opacity,transform] duration-200 ease-out sm:inset-x-auto sm:right-6 md:bottom-24 ${
+className={`fixed inset-x-4 bottom-[calc(8.5rem+env(safe-area-inset-bottom))] z-[80] mx-auto max-w-sm origin-bottom rounded-2xl border border-hairline bg-white shadow-[0_24px_60px_-24px_rgba(17,17,20,0.45)] outline-none transition-[opacity,transform] duration-200 ease-out sm:inset-x-auto sm:left-6 md:bottom-24 ${
+
   isOpen
   ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
   : "pointer-events-none translate-y-3 scale-[0.97] opacity-0"
@@ -404,7 +409,8 @@ const FloatingCalendar = ({ events = [] }) => {
   aria-expanded={isOpen}
   aria-controls="event-calendar-panel"
   aria-label={isOpen ? "Close event calendar" : "Open event calendar"}
-  className="press fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-[80] sm:right-6 md:bottom-8 inline-flex h-14 w-14 cursor-pointer items-center justify-center rounded-2xl bg-ink text-white shadow-[0_14px_30px_-12px_rgba(17,17,20,0.5)] transition-[background-color,transform] duration-200 ease-out hover:bg-ink-soft hover:shadow-[0_18px_36px_-12px_rgba(17,17,20,0.55)] md:bottom-8 md:right-8"
+className="press fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-4 z-[80] sm:left-6 md:bottom-8 inline-flex h-14 w-14 cursor-pointer items-center justify-center rounded-2xl bg-ink text-white shadow-[0_14px_30px_-12px_rgba(17,17,20,0.5)] transition-[background-color,transform] duration-200 ease-out hover:bg-ink-soft hover:shadow-[0_18px_36px_-12px_rgba(17,17,20,0.55)] md:bottom-8 md:left-8"
+
   >
   {isOpen ? (
   <X size={22} aria-hidden="true" />

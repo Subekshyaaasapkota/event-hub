@@ -150,7 +150,7 @@ const Signup = () => {
           Back to EventHub
         </Link>
 
-        <div className="reveal rounded-3xl border border-hairline bg-white p-8 shadow-[0_20px_45px_-28px_rgba(17,17,20,0.35)]">
+        <div className="rounded-3xl border border-hairline bg-white p-8 shadow-[0_20px_45px_-28px_rgba(17,17,20,0.35)]">
           <h1 className="mb-2 font-display text-2xl font-semibold text-ink">
             Create Account
           </h1>

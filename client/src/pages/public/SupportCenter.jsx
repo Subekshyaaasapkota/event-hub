@@ -279,7 +279,7 @@ const FAQItem = ({ q, a, index }) => {
   const panelId = `faq-panel-${index}`;
 
   return (
-  <div className="reveal border-b border-hairline last:border-0" style={{ "--reveal-delay": `${Math.min(index, 6) * 40}ms` }}>
+  <div className="border-b border-hairline last:border-0" style={{ "--reveal-delay": `${Math.min(index, 6) * 40}ms` }}>
   <h3>
   <button
   type="button"
@@ -366,7 +366,7 @@ export default function SupportCenter() {
   <div className="relative overflow-hidden border-b border-hairline bg-paper pt-24 pb-12 lg:pt-32">
   <div className="mx-auto max-w-6xl px-6">
 
-  <div className="reveal mb-8 flex items-center gap-2 text-sm font-medium text-stone-500">
+  <div className="mb-8 flex items-center gap-2 text-sm font-medium text-stone-500">
   <Link to="/" className="transition-colors duration-200 hover:text-ink">Home</Link>
   <span aria-hidden="true" className="text-stone-400">&rsaquo;</span>
   <span className="text-ink">
@@ -375,13 +375,13 @@ export default function SupportCenter() {
   </div>
 
   <h1
-  className="reveal font-display text-3xl font-semibold leading-tight tracking-tight text-ink md:text-4xl"
+  className="font-display text-3xl font-semibold leading-tight tracking-tight text-ink md:text-4xl"
   style={{ "--reveal-delay": "60ms" }}
   >
   {activeTab === "faq" ? "Frequently Asked Questions" : activeTab === "terms" ? "Terms & Conditions" : "Privacy Policy"}
   </h1>
 
-  <div className="reveal mt-6 flex flex-col justify-between gap-6 md:flex-row md:items-end" style={{ "--reveal-delay": "120ms" }}>
+  <div className="mt-6 flex flex-col justify-between gap-6 md:flex-row md:items-end" style={{ "--reveal-delay": "120ms" }}>
   <p className="max-w-xl text-sm leading-relaxed text-stone-600">
   {activeTab === "faq"
   ? "Straight answers about registering, hosting and attending. Search below, or jump to a topic."
@@ -479,8 +479,8 @@ export default function SupportCenter() {
   </p>
 
   {displayFAQ.map((group) => (
-  <section key={group.category} id={`cat-${group.category}`} className="reveal scroll-mt-28">
-  <h2 className="reveal mb-5 border-b border-hairline pb-4 font-display text-xl font-semibold text-ink">
+  <section key={group.category} id={`cat-${group.category}`} className="scroll-mt-28">
+  <h2 className="mb-5 border-b border-hairline pb-4 font-display text-xl font-semibold text-ink">
   {group.category}
   </h2>
   <div className="space-y-1">
@@ -520,7 +520,7 @@ export default function SupportCenter() {
   </p>
   </div>
   {TERMS_SECTIONS.map((section, i) => (
-  <section key={i} id={`terms-${i}`} className="reveal mb-12 scroll-mt-28">
+  <section key={i} id={`terms-${i}`} className="mb-12 scroll-mt-28">
   <h2 className="mb-3 font-display text-lg font-semibold text-ink">{i + 1}. {section.title}</h2>
   <p className="mb-0 max-w-[68ch] leading-relaxed text-stone-600">{section.body}</p>
   </section>
@@ -544,7 +544,7 @@ export default function SupportCenter() {
     {TRUST_BADGES.map((badge, i) => (
     <li
     key={badge}
-    className="reveal flex items-center gap-3 rounded-2xl border border-hairline bg-white px-4 py-3.5 text-sm font-medium text-ink"
+    className="flex items-center gap-3 rounded-2xl border border-hairline bg-white px-4 py-3.5 text-sm font-medium text-ink"
     style={{ "--reveal-delay": `${i * 60}ms` }}
     >
     <CheckCircle size={16} className="shrink-0 text-ink-soft" aria-hidden="true" />
@@ -553,7 +553,7 @@ export default function SupportCenter() {
     ))}
     </ul>
   {PRIVACY_SECTIONS.map((section, i) => (
-  <section key={i} id={`privacy-${i}`} className="reveal mb-16 scroll-mt-28">
+  <section key={i} id={`privacy-${i}`} className="mb-16 scroll-mt-28">
   <h2 className="mb-3 font-display text-lg font-semibold text-ink">{i + 1}. {section.title}</h2>
   <div className="space-y-8">
   {section.content.map((item, ii) => (
