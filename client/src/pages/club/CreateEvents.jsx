@@ -374,7 +374,7 @@ const CreateEvents = () => {
   }
 
   return (
-  <div className="min-h-screen flex bg-[#FDFDFF]">
+  <div className="min-h-screen flex bg-paper">
   <ClubSidebar />
 
   <main className="flex-1 p-10 overflow-auto">

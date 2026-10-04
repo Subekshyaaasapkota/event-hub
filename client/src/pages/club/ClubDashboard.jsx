@@ -168,7 +168,7 @@ const ClubDashboard = () => {
 
   // SCENARIO 3: FULL DASHBOARD
   return (
-  <div className="min-h-screen flex bg-gradient-to-br from-slate-50 via-indigo-50/30 to-slate-50">
+  <div className="min-h-screen flex bg-paper">
   <ClubSidebar />
 
   <div className="flex-1 p-8 lg:p-12 overflow-auto">

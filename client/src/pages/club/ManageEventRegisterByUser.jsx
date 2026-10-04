@@ -159,7 +159,7 @@ const ManageEventRegisterByUser = () => {
 
   if (loading && !registrations.length) {
   return (
-  <div className="min-h-screen flex bg-[#F8F9FD]">
+  <div className="min-h-screen flex bg-paper">
   <ClubSidebar />
   <main className="flex-1 flex items-center justify-center">
   <div className="flex flex-col items-center gap-4">
@@ -172,7 +172,7 @@ const ManageEventRegisterByUser = () => {
   }
 
   return (
-  <div className="min-h-screen flex bg-[#F8F9FD]">
+  <div className="min-h-screen flex bg-paper">
   <ClubSidebar />
 
   <main className="flex-1 p-6 lg:p-10 overflow-auto">

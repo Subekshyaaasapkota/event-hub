@@ -110,7 +110,7 @@ const AdminEventManagement = () => {
 
   if (loading) {
   return (
-  <div className="min-h-screen flex bg-[#F8F9FD]">
+  <div className="min-h-screen flex bg-paper">
   <ClubSidebar />
   <main className="flex-1 flex items-center justify-center">
   <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-600"></div>
@@ -121,7 +121,7 @@ const AdminEventManagement = () => {
 
   if (error || !event) {
   return (
-  <div className="min-h-screen flex bg-[#F8F9FD]">
+  <div className="min-h-screen flex bg-paper">
   <ClubSidebar />
   <main className="flex-1 p-10 flex items-center justify-center">
   <div className="bg-rose-50 border border-rose-200 rounded-3xl p-12 max-w-2xl text-center">
@@ -150,7 +150,7 @@ const AdminEventManagement = () => {
   : 0;
 
   return (
-  <div className="min-h-screen flex bg-[#F8F9FD]">
+  <div className="min-h-screen flex bg-paper">
   <ClubSidebar />
 
   <main className="flex-1 p-8 overflow-auto">

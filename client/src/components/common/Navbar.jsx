@@ -196,7 +196,7 @@ const Navbar = () => {
   if (loading) {
     return shell(
       <div
-        className="h-9 w-9 animate-pulse rounded-full bg-stone-200"
+        className="h-11 w-11 animate-pulse rounded-full bg-stone-200"
         aria-hidden="true"
       />
     );
@@ -221,7 +221,7 @@ const Navbar = () => {
                 </NavLink>
                 <Link
                   to="/signup"
-                  className="press rounded-xl bg-ink px-5 py-2 text-sm font-semibold text-paper hover:bg-stone-800"
+                  className="press inline-flex min-h-[44px] items-center rounded-xl bg-ink px-5 text-sm font-semibold text-paper transition-colors duration-200 hover:bg-stone-800"
                 >
                   Get Started
                 </Link>
@@ -231,7 +231,7 @@ const Navbar = () => {
                 {/* --- ROLE BASED PORTALS --- */}
                 <Link
                   to={getDashboardLink()}
-                  className={`press flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold ${dashboardTheme.text} ${dashboardTheme.bg} ${dashboardTheme.border} ${dashboardTheme.hoverBg} ${dashboardTheme.hoverText}`}
+                  className={`press flex min-h-[44px] items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition-colors duration-200 ${dashboardTheme.text} ${dashboardTheme.bg} ${dashboardTheme.border} ${dashboardTheme.hoverBg} ${dashboardTheme.hoverText}`}
                 >
                   {getDashboardIcon()}
                   <span className="max-w-[10rem] truncate">{getDashboardText()}</span>
@@ -245,7 +245,7 @@ const Navbar = () => {
                 {!isAdmin && !isClubPending && !isClubApproved && (
                   <Link
                     to="/club/register"
-                    className={`press flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold ${DASHBOARD_THEMES.register.text} ${DASHBOARD_THEMES.register.bg} ${DASHBOARD_THEMES.register.border} ${DASHBOARD_THEMES.register.hoverBg} ${DASHBOARD_THEMES.register.hoverText}`}
+                    className={`press flex min-h-[44px] items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition-colors duration-200 ${DASHBOARD_THEMES.register.text} ${DASHBOARD_THEMES.register.bg} ${DASHBOARD_THEMES.register.border} ${DASHBOARD_THEMES.register.hoverBg} ${DASHBOARD_THEMES.register.hoverText}`}
                   >
                     <Building2 size={16} aria-hidden="true" />
                     <span>Register Club</span>
@@ -261,7 +261,7 @@ const Navbar = () => {
                     aria-haspopup="menu"
                     aria-expanded={open}
                     aria-label={`Account menu for ${user.name}`}
-                    className="press flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-ink text-paper shadow-sm hover:bg-stone-700"
+                    className="press flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-ink text-paper shadow-sm hover:bg-stone-700"
                   >
                     {showAvatarImage ? (
                       <img
@@ -312,7 +312,7 @@ const Navbar = () => {
                         to="/profile"
                         role="menuitem"
                         onClick={() => setOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-700 transition-colors duration-200 hover:bg-stone-100 hover:text-ink"
+                        className="flex min-h-[44px] items-center gap-2.5 px-4 text-sm text-stone-700 transition-colors duration-200 hover:bg-stone-100 hover:text-ink"
                       >
                         <User size={16} aria-hidden="true" /> Profile Settings
                       </Link>
@@ -323,7 +323,7 @@ const Navbar = () => {
                           to="/club/register"
                           role="menuitem"
                           onClick={() => setOpen(false)}
-                          className={`flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors duration-200 ${DASHBOARD_THEMES.register.text} hover:bg-emerald-50`}
+                          className={`flex min-h-[44px] items-center gap-2.5 px-4 text-sm transition-colors duration-200 ${DASHBOARD_THEMES.register.text} hover:bg-emerald-50`}
                         >
                           <Building2 size={16} aria-hidden="true" /> Register Organization
                         </Link>
@@ -335,7 +335,7 @@ const Navbar = () => {
                           to="/club/verification"
                           role="menuitem"
                           onClick={() => setOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-900 transition-colors duration-200 hover:bg-amber-50"
+                          className="flex min-h-[44px] items-center gap-2.5 px-4 text-sm text-amber-900 transition-colors duration-200 hover:bg-amber-50"
                         >
                           <LayoutDashboard size={16} aria-hidden="true" />
                           Check Verification Status
@@ -349,7 +349,7 @@ const Navbar = () => {
                           logout();
                           setOpen(false);
                         }}
-                        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-red-700 transition-colors duration-200 hover:bg-red-50"
+                        className="flex min-h-[44px] w-full items-center gap-2.5 px-4 text-sm font-medium text-red-700 transition-colors duration-200 hover:bg-red-50"
                       >
                         <LogOut size={16} aria-hidden="true" /> Logout
                       </button>

@@ -77,7 +77,7 @@ const ManageYourEvents = () => {
   );
 
   return (
-  <div className="min-h-screen flex bg-[#F8F9FD]">
+  <div className="min-h-screen flex bg-paper">
   <ClubSidebar />
 
   <main className="flex-1 p-10 overflow-auto">
