@@ -2,7 +2,7 @@
 
 [![Built with MERN](https://img.shields.io/badge/MERN-Stack-61DAFB?logo=react)](https://github.com)
 [![License: ISC](https://img.shields.io/badge/License-ISC-yellow.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/Node.js-v16%2B-green)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-v20%2B-green)](https://nodejs.org/)
 [![MongoDB](https://img.shields.io/badge/Database-MongoDB-green?logo=mongodb)](https://www.mongodb.com/)
 
 **EventHub** is a centralized event discovery and management platform for Nepal's IT community. It connects students with verified technical opportunities while helping organizations efficiently manage and promote their events.
@@ -177,7 +177,30 @@ npm run dev
 
 The frontend runs on **http://localhost:5173**.
 
-#### 4. Run again later
+#### 4. Load the demo events (optional but recommended)
+
+An empty install has no events, so the pages you most want to look at will be
+empty. The seed script creates eight events with generated posters, a verified
+demo club and a set of registrants.
+
+```bash
+cd server
+npm run seed
+```
+
+The seed is idempotent. It upserts by event title, so running it twice will not
+duplicate anything, and it resets registration counts to their starting values
+rather than stacking more on top.
+
+> The demo posters are uploaded to **your** Cloudinary account, so
+> `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET` must
+> be set first. The script exits with an explanation rather than writing events
+> with broken image URLs. If you would rather not set up Cloudinary, create
+> events through the club console instead and skip this step.
+
+See [docs/dummy-data.md](./docs/dummy-data.md) for exactly what it creates.
+
+#### 5. Run again later
 
 You only need to repeat these two commands each time you work on the project:
 
@@ -205,7 +228,7 @@ Copy from `server/.env.example`. Only the first three are required to boot.
 | `ESEWA_SECRET_KEY`  | no  | eSewa signature key.  |
 | `RESEND_API_KEY`  | no  | If missing, approval emails are skipped instead of crashing.  |
 | `EMAIL_FROM`  | no  | Sender address for outgoing mail.  |
-| `CLOUDINARY_CLOUD_NAME` | no  | Required for logo/poster uploads.  |
+| `CLOUDINARY_CLOUD_NAME` | for uploads  | Required for logo and poster uploads, and by `npm run seed`.  |
 | `CLOUDINARY_API_KEY`  | no  | Cloudinary API key.  |
 | `CLOUDINARY_API_SECRET` | no  | Cloudinary API secret.  |
 
@@ -378,9 +401,6 @@ npm start  # Run the server without nodemon
 ### Organizer Dashboard
 
 ![Organizer Portal](./client/public/screenshots/4.jpeg)
-
-### Event List Page
-
 
 ##  License
 
