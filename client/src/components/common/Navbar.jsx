@@ -5,6 +5,7 @@ import ROLES from "../../routes/roles.js";
 import { LayoutDashboard, LogOut, User, Building2, Shield, ChevronDown } from "lucide-react";
 import { getImageUrl } from "../../utils/imageUrl";
 import MobileTabBar from "./MobileTabBar";
+import ConfirmDialog from "./ConfirmDialog";
 
 const PRIMARY_LINKS = [
   { to: "/", label: "Home" },
@@ -77,6 +78,7 @@ const Navbar = () => {
   const { user, logout, loading } = useAuth();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
   // Remembers which URL failed rather than a plain boolean. Comparing the failed
   // URL against the current one means a new avatar is tried again automatically,
   // with no effect resetting state on account change.
@@ -357,7 +359,7 @@ id="account-menu"
                       <button
                         type="button"
                         onClick={() => {
-                          logout();
+                          setConfirmingLogout(true);
                           setOpen(false);
                         }}
                         className="flex min-h-[44px] w-full items-center gap-2.5 px-4 text-sm font-medium text-red-700 transition-colors duration-200 hover:bg-red-50"
@@ -381,6 +383,17 @@ id="account-menu"
         which pinned it to the top of the page.
       */}
       <MobileTabBar />
+
+      <ConfirmDialog
+        isOpen={confirmingLogout}
+        onClose={() => setConfirmingLogout(false)}
+        onConfirm={logout}
+        type="danger"
+        title="Sign out?"
+        message="You will need to sign in again to see your registrations and profile."
+        confirmText="Sign out"
+        cancelText="Cancel"
+      />
     </>
   );
 };

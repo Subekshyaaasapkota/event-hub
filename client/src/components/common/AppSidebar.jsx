@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { LogOut, ArrowLeft } from "lucide-react";
+import ConfirmDialog from "./ConfirmDialog";
 
 /**
  * Shared sidebar for the club console and the admin panel.
@@ -44,6 +45,7 @@ const AppSidebar = ({
   signOutLabel = "Sign out",
 }) => {
   const location = useLocation();
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false);
 
   const renderItem = (item) => {
     const active = location.pathname === item.to;
@@ -104,7 +106,7 @@ const AppSidebar = ({
           {onSignOut ? (
             <button
               type="button"
-              onClick={onSignOut}
+              onClick={() => setConfirmingSignOut(true)}
               className={`${rowBase} w-full text-left text-red-700 hover:bg-red-50 hover:text-red-800`}
             >
               <LogOut size={20} aria-hidden="true" className="shrink-0" />
@@ -138,6 +140,17 @@ const AppSidebar = ({
           })}
         </ul>
       </nav>
+
+      <ConfirmDialog
+        isOpen={confirmingSignOut}
+        onClose={() => setConfirmingSignOut(false)}
+        onConfirm={onSignOut}
+        type="danger"
+        title="Sign out?"
+        message="You will need to sign in again to see your registrations and profile."
+        confirmText="Sign out"
+        cancelText="Cancel"
+      />
     </>
   );
 };
