@@ -40,20 +40,111 @@ const PAYMENT_GATEWAYS = [
 
 //  Sub-components 
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Kept identical to the rule the server applies, so the two never disagree
+// about the same number.
+const PHONE_PATTERN = /^[+()\d][\d\s\-().]{5,24}$/;
+
+const isUsablePhoneNumber = (value) =>
+  PHONE_PATTERN.test(value) && value.replace(/\D/g, "").length >= 7;
+
+/**
+ * Per field messages, in the plain voice used elsewhere in the app.
+ * The server checks the same rules and is the authority; these exist so a
+ * mistake is caught before a round trip, not instead of one.
+ */
+const validateStep1 = (formData) => {
+  const errors = {};
+  const name = formData.name.trim();
+  const email = formData.email.trim();
+  const phone = formData.phone.trim();
+
+  if (!name) errors.name = "Enter your full name.";
+  else if (name.length < 2) errors.name = "That name looks too short.";
+
+  if (!email) errors.email = "Enter your email address.";
+  else if (!EMAIL_PATTERN.test(email)) errors.email = "That does not look like an email address.";
+
+  if (!phone) errors.phone = "Enter a phone number we can reach you on.";
+  else if (!isUsablePhoneNumber(phone)) errors.phone = "Use digits, optionally with a + country code, spaces or dashes.";
+
+  return errors;
+};
+
+const FieldError = ({ children }) =>
+  children ? (
+    <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-rose-600">
+      <AlertCircle size={13} aria-hidden="true" className="shrink-0" />
+      {children}
+    </p>
+  ) : null;
+
 const FieldLabel = ({ children }) => (
   <label className="block text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 mb-1.5 pl-0.5">
   {children}
   </label>
 );
 
-const Input = ({ ...props }) => (
+const Input = ({ invalid = false, className = "", ...props }) => (
   <input
-  {...props}
-  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-xl
-  focus:bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100
-  outline-none transition-all text-slate-700 font-medium placeholder-slate-300 text-sm"
+    {...props}
+    aria-invalid={invalid || undefined}
+    className={`w-full px-5 py-3.5 rounded-xl border outline-none transition-all font-medium placeholder-slate-300 text-sm ${
+      invalid
+        ? "bg-rose-50/40 border-rose-300 text-slate-700 focus:bg-white focus:border-rose-400 focus:ring-2 focus:ring-rose-100"
+        : "bg-slate-50 border-slate-100 text-slate-700 focus:bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+    } ${className}`}
   />
 );
+
+/**
+ * A labelled field that can report what is wrong with it.
+ *
+ * The message is tied to the input with aria-describedby rather than only being
+ * coloured in, so it reaches anyone using a screen reader, and invalid is only
+ * ever switched on after the person has tried to continue.
+ */
+const Field = ({
+  label,
+  name,
+  value,
+  onChange,
+  error,
+  showError,
+  type = "text",
+  placeholder,
+  optional = false,
+}) => {
+  const invalid = Boolean(showError && error);
+  const errorId = `${name}-error`;
+
+  return (
+    <div>
+      <FieldLabel>
+        {label}
+        {optional ? (
+          <span className="normal-case font-normal tracking-normal text-slate-300">
+            {" "}
+            (optional)
+          </span>
+        ) : null}
+      </FieldLabel>
+      <Input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        invalid={invalid}
+        aria-describedby={invalid ? errorId : undefined}
+      />
+      <span id={errorId}>
+        <FieldError>{invalid ? error : null}</FieldError>
+      </span>
+    </div>
+  );
+};
+
 
 const Textarea = ({ ...props }) => (
   <textarea
@@ -139,7 +230,7 @@ const GatewayOption = ({ gateway, selected, onSelect }) => (
 
   {selected && (
   <div 
-  className="absolute top-3 right-3 w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-lg animate-in zoom-in duration-300"
+  className="absolute top-3 right-3 w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-lg animate-[fade-in_200ms_ease-out_both]"
   style={{ color: gateway.color }}
   >
   <CheckCircle size={12} />
@@ -161,6 +252,10 @@ const RegistrationForm = ({ eventId, onClose, onSuccess }) => {
   const [error, setError] = useState("");
   const [eventData, setEventData] = useState(null);
   const [selectedGateway, setSelectedGateway] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+  // Set once the person has tried to move on, so fields are not marked wrong
+  // while they are still filling them in for the first time.
+  const [showFieldErrors, setShowFieldErrors] = useState(false);
 
   const [formData, setFormData] = useState({
   name: user?.name || "",
@@ -181,16 +276,39 @@ const RegistrationForm = ({ eventId, onClose, onSuccess }) => {
   load();
   }, [eventId, fetchEventById]);
 
-  const handleChange = useCallback(
-  (e) => setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value })),
-  []
+const handleChange = useCallback(
+    (e) => {
+      const { name, value } = e.target;
+      setFormData((prev) => ({ ...prev, [name]: value }));
+      // Clear this field's complaint as soon as it is being corrected, rather
+      // than making the person leave and return to find out.
+      setFieldErrors((prev) => {
+        if (!prev[name]) return prev;
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    },
+    []
   );
 
-  //  Validation 
+  //  Validation
 
-  const isStep1Valid = formData.name.trim() && formData.phone.trim();
+  const step1Errors = validateStep1(formData);
+  const isStep1Valid = Object.keys(step1Errors).length === 0;
 
   const isSubmitReady = isPaidEvent ? Boolean(selectedGateway) : true;
+
+  const goNext = () => {
+    if (step === 1) {
+      setFieldErrors(step1Errors);
+      setShowFieldErrors(true);
+      if (!isStep1Valid) return;
+    }
+    setError("");
+    setStep((s) => s + 1);
+  };
+
 
   //  Payment handlers 
 
@@ -290,7 +408,7 @@ const RegistrationForm = ({ eventId, onClose, onSuccess }) => {
 
   {/*  Step 1: Personal  */}
   {step === 1 && (
-  <div className="space-y-5 animate-in fade-in slide-in-from-left-3 duration-300">
+  <div className="space-y-5 animate-[rise-and-fade_260ms_cubic-bezier(0.22,1,0.36,1)_both]">
   <div className="mb-6 flex items-center gap-4">
   {user?.profilePicture && (
   <img
@@ -308,24 +426,42 @@ const RegistrationForm = ({ eventId, onClose, onSuccess }) => {
   <p className="text-slate-400 text-sm mt-1">Tell us a bit about yourself.</p>
   </div>
   </div>
-  <div>
-  <FieldLabel>Full Name</FieldLabel>
-  <Input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Your full name" />
-  </div>
-  <div>
-  <FieldLabel>Email Address</FieldLabel>
-  <Input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="name@example.com" />
-  </div>
-  <div>
-  <FieldLabel>Phone Number</FieldLabel>
-  <Input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="9812345678" />
-  </div>
-  </div>
+<Field
+      label="Full Name"
+      name="name"
+      value={formData.name}
+      onChange={handleChange}
+      error={fieldErrors.name}
+      showError={showFieldErrors}
+      placeholder="Your full name"
+    />
+    <Field
+      label="Email Address"
+      name="email"
+      type="email"
+      value={formData.email}
+      onChange={handleChange}
+      error={fieldErrors.email}
+      showError={showFieldErrors}
+      placeholder="name@example.com"
+    />
+    <Field
+      label="Phone Number"
+      name="phone"
+      type="tel"
+      value={formData.phone}
+      onChange={handleChange}
+      error={fieldErrors.phone}
+      showError={showFieldErrors}
+      placeholder="9812345678"
+    />
+    </div>
   )}
+
 
   {/*  Step 2: Academic  */}
   {step === 2 && (
-  <div className="space-y-5 animate-in fade-in slide-in-from-right-3 duration-300">
+  <div className="space-y-5 animate-[rise-and-fade_260ms_cubic-bezier(0.22,1,0.36,1)_both]">
   <div className="mb-6">
   <h3 className="text-2xl font-bold text-slate-800">Academic Profile</h3>
   <p className="text-slate-400 text-sm mt-1">Your current institutional affiliation.</p>
@@ -343,7 +479,7 @@ const RegistrationForm = ({ eventId, onClose, onSuccess }) => {
 
   {/*  Step 3: Confirm + Payment  */}
   {step === 3 && (
-  <div className="space-y-6 animate-in fade-in slide-in-from-right-3 duration-300">
+  <div className="space-y-6 animate-[rise-and-fade_260ms_cubic-bezier(0.22,1,0.36,1)_both]">
   <div className="mb-2">
   <h3 className="text-xl font-black text-slate-800 tracking-tight uppercase">
   {isPaidEvent ? "Payment Terminal" : "Final Review"}
@@ -426,11 +562,15 @@ const RegistrationForm = ({ eventId, onClose, onSuccess }) => {
   {step < 3 ? (
   <button
   type="button"
-  onClick={() => setStep((s) => s + 1)}
-  disabled={step === 1 && !isStep1Valid}
-  className="flex-1 bg-slate-900 text-white py-3.5 rounded-xl font-bold text-sm
-  hover:bg-indigo-600 transition-all active:scale-95 flex items-center justify-center gap-2
-  disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+onClick={goNext}
+    // Deliberately not disabled when the form is incomplete. A button that
+    // simply greys out gives the person no idea what is wrong with it, and it
+    // is unreachable by keyboard and awkward with a screen reader. Pressing it
+    // surfaces the messages instead.
+    className="flex-1 bg-slate-900 text-white py-3.5 rounded-xl font-bold text-sm
+    hover:bg-indigo-600 transition-all active:scale-95 flex items-center justify-center gap-2
+    disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+
   >
   Continue <ChevronRight size={16} />
   </button>

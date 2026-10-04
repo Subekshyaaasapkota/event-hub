@@ -12,11 +12,19 @@ const registrationSchema = new mongoose.Schema(
   ref: "User",
   required: true,
   },
-  status: {
-  type: String,
-  enum: ["Confirmed", "Pending", "Cancelled", "Failed"],
-  default: "Confirmed",
+status: {
+    type: String,
+    enum: ["Confirmed", "Pending", "Cancelled", "Failed"],
+    default: "Confirmed",
   },
+  // While a paid registration sits at Pending it is holding a seat, and this is
+  // when that hold runs out. Null for everything else, including every
+  // confirmed seat and every free event.
+  holdExpiresAt: {
+    type: Date,
+    default: null,
+  },
+
   paymentInfo: {
   amount: Number,
   transactionId: String,
@@ -29,11 +37,11 @@ const registrationSchema = new mongoose.Schema(
   default: "None",
   },
   // Custom form data for the specific event
-  name: String,
-  email: String,
-  phone: String,
-  college: String,
-  remarks: String,
+  name: { type: String, trim: true, maxlength: 80 },
+  email: { type: String, trim: true, lowercase: true, maxlength: 120 },
+  phone: { type: String, trim: true, maxlength: 20 },
+  college: { type: String, trim: true, maxlength: 160 },
+  remarks: { type: String, trim: true, maxlength: 500 },
   },
   { timestamps: true },
 );

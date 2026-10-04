@@ -312,9 +312,13 @@ const finalizeRegistrationByPidx = async (pidx, paymentInfo) => {
   "paymentInfo.amount": paymentInfo.amount,
   "paymentInfo.transactionId": paymentInfo.transactionId,
   "paymentInfo.paymentDate": new Date(),
+  holdExpiresAt: null,
   }
   },
-  { new: true }
+  // The document as it was before the update, not after: holdExpiresAt is
+  // cleared above, and it is what says whether this row was already sitting on
+  // a claimed seat.
+  { new: false }
   );
 
   if (!updatedRegistration) {
@@ -326,9 +330,15 @@ const finalizeRegistrationByPidx = async (pidx, paymentInfo) => {
   }
 
   console.log(` [PAYMENT] Confirmed registration: ${updatedRegistration._id}`);
+  // A seat is claimed when the registration is created and held until its hold
+  // expires, so confirming a payment must not claim a second one or the event
+  // double counts. Rows written before holds existed carry no holdExpiresAt
+  // and never claimed anything, so those still have to be counted here.
+  if (!updatedRegistration.holdExpiresAt) {
   await Event.findByIdAndUpdate(updatedRegistration.event, {
   $inc: { currentParticipants: 1 },
   });
+  }
 
   return true;
   } catch (error) {
@@ -355,21 +365,30 @@ const finalizeRegistration = async (registrationId, paymentInfo) => {
   "paymentInfo.amount": Number(paymentInfo.amount),
   "paymentInfo.transactionId": paymentInfo.transactionId,
   "paymentInfo.paymentDate": new Date(),
+  holdExpiresAt: null,
   }
   },
-  { new: true }
+  // The document as it was before the update, not after: holdExpiresAt is
+  // cleared above, and it is what says whether this row was already sitting on
+  // a claimed seat.
+  { new: false }
   );
-
   if (!updatedRegistration) {
   const checkAgain = await Registration.findById(queryId);
   if (checkAgain && checkAgain.status === "Confirmed") return true;
   return false;
   }
-
+  // A seat is claimed when the registration is created and held until its hold
+  // expires, so confirming a payment must not claim a second one or the event
+  // double counts. Rows written before holds existed carry no holdExpiresAt
+  // and never claimed anything, so those still have to be counted here.
+  if (!updatedRegistration.holdExpiresAt) {
   await Event.findByIdAndUpdate(updatedRegistration.event, {
   $inc: { currentParticipants: 1 },
   });
+  }
   return true;
+
   } catch (error) {
   console.error(` [PAYMENT] Error finalization:`, error.message);
   return false;
