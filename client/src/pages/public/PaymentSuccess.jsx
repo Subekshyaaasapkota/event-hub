@@ -154,7 +154,7 @@ const PaymentSuccess = () => {
   {/* Success State */}
   {paymentStatus === "success" && (
   <div className="p-8 text-center space-y-6">
-  <div className="w-20 h-20 mx-auto bg-linear-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-lg">
+  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-700 shadow-lg">
   <CheckCircle size={40} className="text-white" />
   </div>
 
@@ -215,7 +215,7 @@ const PaymentSuccess = () => {
 
   <button
   onClick={() => navigate("/dashboard")}
-  className="w-full bg-linear-to-r from-green-500 to-emerald-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:shadow-lg transition-all active:scale-95"
+  className="press w-full rounded-2xl bg-emerald-700 px-5 py-4 text-sm font-semibold uppercase tracking-widest text-white transition-[background-color,transform,box-shadow] duration-150 hover:bg-emerald-800 hover:shadow-lg active:scale-[0.98]"
   >
   Go to Dashboard
   </button>
@@ -233,7 +233,7 @@ const PaymentSuccess = () => {
   {paymentStatus === "processing" && (
   <div className="p-8 text-center space-y-6">
   <div className="flex justify-center">
-  <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-600"></div>
+  <div className="animate-spin h-16 w-16 rounded-full border-4 border-hairline border-t-ink border-b-ink" role="status" aria-label="Verifying payment" />
   </div>
   <div>
   <h1 className="text-2xl font-black text-slate-800 mb-2">
@@ -249,7 +249,7 @@ const PaymentSuccess = () => {
   {/* Failed State */}
   {paymentStatus === "failed" && (
   <div className="p-8 text-center space-y-6">
-  <div className="w-20 h-20 mx-auto bg-linear-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center shadow-lg">
+  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-red-700 shadow-lg">
   <AlertCircle size={40} className="text-white" />
   </div>
 
@@ -272,7 +272,7 @@ const PaymentSuccess = () => {
   <div className="space-y-3">
   <button
   onClick={() => navigate(-1)}
-  className="w-full bg-linear-to-r from-red-500 to-rose-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:shadow-lg transition-all active:scale-95"
+  className="press w-full rounded-2xl bg-red-700 px-5 py-4 text-sm font-semibold uppercase tracking-widest text-white transition-[background-color,transform,box-shadow] duration-150 hover:bg-red-800 hover:shadow-lg active:scale-[0.98]"
   >
   Try Again
   </button>
@@ -305,7 +305,7 @@ const PaymentSuccess = () => {
 
   <button
   onClick={() => navigate("/dashboard")}
-  className="w-full bg-linear-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:shadow-lg transition-all active:scale-95"
+  className="press w-full rounded-2xl bg-ink px-5 py-4 text-sm font-semibold uppercase tracking-widest text-paper transition-[background-color,transform,box-shadow] duration-150 hover:bg-ink-soft hover:shadow-lg active:scale-[0.98]"
   >
   Go to Dashboard
   </button>

@@ -102,7 +102,7 @@ const NextUp = ({ events }) => {
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-ink transition-colors group-hover:text-indigo-700">
+              <p className="truncate text-sm font-medium text-ink transition-colors group-hover:text-ink-soft">
                 {event.title}
               </p>
               <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-stone-500">
@@ -133,7 +133,7 @@ const NextUp = ({ events }) => {
 
     <Link
       to="/events"
-      className="group flex items-center justify-center gap-1.5 border-t border-hairline px-5 py-3.5 text-[0.8125rem] font-semibold text-ink transition-colors duration-200 hover:bg-stone-50 hover:text-indigo-700"
+      className="group flex items-center justify-center gap-1.5 border-t border-hairline px-5 py-3.5 text-[0.8125rem] font-semibold text-ink transition-colors duration-200 hover:bg-stone-50 hover:text-ink-soft"
     >
       See the full calendar
       <ArrowRight
@@ -241,7 +241,7 @@ const Home = () => {
 
       <Link
         to="/events"
-        className="group inline-flex items-center gap-1.5 rounded-lg text-sm font-semibold text-ink transition-colors duration-200 hover:text-indigo-700"
+        className="group inline-flex items-center gap-1.5 rounded-lg text-sm font-semibold text-ink transition-colors duration-200 hover:text-ink-soft"
       >
         View all
         <ArrowRight

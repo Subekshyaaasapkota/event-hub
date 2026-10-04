@@ -87,7 +87,7 @@ const EsewaPayment = () => {
   <p className="text-slate-600">{error}</p>
   <button
   onClick={() => (window.location.href = "/")}
-  className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all"
+  className="press w-full rounded-xl bg-ink px-5 py-3 font-semibold text-paper transition-colors duration-150 hover:bg-ink-soft active:scale-[0.98]"
   >
   Return Home
   </button>
