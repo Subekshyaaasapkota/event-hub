@@ -32,6 +32,53 @@ dotenv.config();
 const DAY = 86400000;
 const day = (n) => new Date(Date.now() + n * DAY);
 
+/**
+ * Posters for the seeded events.
+ *
+ * These used to point at ui-avatars.com, which is an avatar service: it returns
+ * a flat circle of initials on one solid navy field. Eight of those in the event
+ * grid is eight identical navy discs, which read as scraped rather than
+ * designed. They are replaced by real artwork, one mark per event, hosted on
+ * Cloudinary by scripts/generateEventPosters.js.
+ *
+ * The URLs are deliberately versionless. Cloudinary stamps a version segment
+ * into every upload URL, and re-running the generator with overwrite would then
+ * leave eight dead URLs behind in this file. Versionless delivery URLs always
+ * resolve to the current asset, so regenerating the artwork updates the images
+ * without touching the seed.
+ *
+ * The cloud name comes from the environment rather than being written here, so
+ * pointing this at a different Cloudinary account is a change to .env and not
+ * to the data.
+ */
+const POSTER_SLUGS = {
+  "Intro to Web Development Bootcamp": "intro-to-web-development",
+  "AI and Machine Learning Seminar": "ai-and-machine-learning",
+  "National Robotics Championship 2026": "robotics-championship",
+  "Photography Walk: Patan Durbar Square": "photography-walk",
+  "Git and GitHub Masterclass": "git-and-github-masterclass",
+  "Tech Startup Pitch Night": "startup-pitch-night",
+  "Hackathon: Build for Nepal": "hackathon-build-for-nepal",
+  "Inter College Debate 2025": "inter-college-debate",
+};
+
+const posterFor = (title) => {
+  const cloud = process.env.CLOUDINARY_CLOUD_NAME;
+  const slug = POSTER_SLUGS[title];
+  if (!cloud || !slug) {
+    // poster is required on the Events schema, so there is no safe empty value
+    // to fall back to. Stopping here beats writing eight broken image URLs that
+    // only fail once someone opens the events page.
+    throw new Error(
+      `Cannot build a poster for "${title}". ` +
+        (slug
+          ? "CLOUDINARY_CLOUD_NAME is not set. Add it to server/.env; see .env.example."
+          : "No poster slug is mapped for this event. Add one to POSTER_SLUGS."),
+    );
+  }
+  return `https://res.cloudinary.com/${cloud}/image/upload/eventhub/seed-posters/${slug}.png`;
+};
+
 const ACCOUNTS = [
   {
     key: "admin",
@@ -486,7 +533,7 @@ async function seed() {
     const doc = {
       title: ev.title,
       description: ev.description,
-      poster: `https://ui-avatars.com/api/?name=${encodeURIComponent(ev.title)}&size=800&background=0D3B66&color=fff&font-size=40`,
+      poster: posterFor(ev.title),
       eventType: ev.eventType,
       category: ev.category,
       district: ev.district,
