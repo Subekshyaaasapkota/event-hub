@@ -84,7 +84,11 @@ const ClubDashboard = () => {
   color: "amber",
   },
   ];
-  if (authLoading)
+  // authLoading alone is not enough. Once loading finishes the user can still
+  // be null, because the token was rejected or the profile request failed, and
+  // `user.club` below then throws and the page white-screens. The render
+  // harness hit this with an empty session.
+  if (authLoading || !user)
   return (
   <div className="h-screen flex items-center justify-center">
   Loading...
