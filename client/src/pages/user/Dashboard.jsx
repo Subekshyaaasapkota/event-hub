@@ -155,9 +155,8 @@ const Dashboard = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-paper pb-24">
-      <div className="mx-auto w-full max-w-5xl px-5 pt-10 sm:px-8 lg:pt-14">
+return (
+      <>
         <header className="border-b border-hairline pb-8">
           <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
             {user?.name ? `Hello, ${user.name.split(" ")[0]}` : "Dashboard"}
@@ -406,8 +405,7 @@ const Dashboard = () => {
             </p>
           )}
         </section>
-      </div>
-    </div>
+      </>
   );
 };
 

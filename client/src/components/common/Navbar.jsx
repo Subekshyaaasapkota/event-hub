@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 import ROLES from "../../routes/roles.js";
-import { LayoutDashboard, LogOut, User, Building2, Shield } from "lucide-react";
+import { LayoutDashboard, LogOut, User, Building2, Shield, ChevronDown } from "lucide-react";
 import { getImageUrl } from "../../utils/imageUrl";
 import MobileTabBar from "./MobileTabBar";
 
@@ -254,34 +254,49 @@ const Navbar = () => {
 
                 {/* User Avatar & Dropdown */}
                 <div className="relative" ref={dropdownRef}>
-                  <button
-                    ref={triggerRef}
-                    type="button"
-                    onClick={() => setOpen((v) => !v)}
-                    aria-haspopup="menu"
-                    aria-expanded={open}
-                    aria-label={`Account menu for ${user.name}`}
-                    className="press flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-ink text-paper shadow-sm hover:bg-stone-700"
-                  >
-                    {showAvatarImage ? (
-                      <img
-                        src={avatarUrl}
-                        alt=""
-                        className="h-full w-full object-cover"
-                        onError={() => setBrokenAvatarUrl(avatarUrl)}
-                      />
-                    ) : (
-                      <span aria-hidden="true" className="text-base font-semibold">
-                        {initials}
-                      </span>
-                    )}
-                  </button>
+                  {/*
+                    The chevron badge is what tells you the avatar opens a menu.
+                    Without it the control reads as a photograph, which is why
+                    the menu was hard to find. It sits on a paper-coloured ring
+                    so it stays legible against a dark photo.
+                  */}
+                  <span className="relative flex h-11 w-11 shrink-0">
+                    <button
+                      ref={triggerRef}
+                      type="button"
+                      onClick={() => setOpen((v) => !v)}
+                      aria-controls="account-menu"
+                      aria-expanded={open}
+                      aria-label={`Account menu for ${user.name}`}
+                      className="press flex h-full w-full items-center justify-center overflow-hidden rounded-full border border-hairline bg-stone-100 text-ink transition-colors duration-200 hover:bg-stone-200"
+                    >
+                      {showAvatarImage ? (
+                        <img
+                          src={avatarUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          onError={() => setBrokenAvatarUrl(avatarUrl)}
+                        />
+                      ) : (
+                        <span aria-hidden="true" className="text-base font-semibold">
+                          {initials}
+                        </span>
+                      )}
+                    </button>
+
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-paper bg-ink text-paper"
+                    >
+                      <ChevronDown size={10} strokeWidth={3} />
+                    </span>
+                  </span>
 
                   {open && (
                     <div
-                      role="menu"
-                      aria-label="Account"
-                      className="absolute right-0 z-60 mt-3 w-60 origin-top-right overflow-hidden rounded-2xl border border-hairline bg-white py-2 shadow-2xl motion-safe:animate-[rise_180ms_cubic-bezier(0.22,1,0.36,1)_both]"
+id="account-menu"
+                    aria-label="Account"
+                    className="absolute right-0 z-[60] mt-3 w-60 origin-top-right overflow-hidden rounded-2xl border border-hairline bg-white py-2 shadow-2xl motion-safe:animate-[rise_180ms_cubic-bezier(0.22,1,0.36,1)_both]"
                     >
                       <div className="border-b border-hairline bg-stone-50 px-4 py-3">
                         <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
@@ -310,7 +325,6 @@ const Navbar = () => {
 
                       <Link
                         to="/profile"
-                        role="menuitem"
                         onClick={() => setOpen(false)}
                         className="flex min-h-[44px] items-center gap-2.5 px-4 text-sm text-stone-700 transition-colors duration-200 hover:bg-stone-100 hover:text-ink"
                       >
@@ -321,7 +335,6 @@ const Navbar = () => {
                       {!user.club && !isAdmin && !isStudent && (
                         <Link
                           to="/club/register"
-                          role="menuitem"
                           onClick={() => setOpen(false)}
                           className={`flex min-h-[44px] items-center gap-2.5 px-4 text-sm transition-colors duration-200 ${DASHBOARD_THEMES.register.text} hover:bg-emerald-50`}
                         >
@@ -333,7 +346,6 @@ const Navbar = () => {
                       {isClubPending && (
                         <Link
                           to="/club/verification"
-                          role="menuitem"
                           onClick={() => setOpen(false)}
                           className="flex min-h-[44px] items-center gap-2.5 px-4 text-sm text-amber-900 transition-colors duration-200 hover:bg-amber-50"
                         >
@@ -344,7 +356,6 @@ const Navbar = () => {
 
                       <button
                         type="button"
-                        role="menuitem"
                         onClick={() => {
                           logout();
                           setOpen(false);

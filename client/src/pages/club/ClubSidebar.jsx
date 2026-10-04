@@ -52,7 +52,7 @@ const ClubSidebar = () => {
           {upcomingEvents.map((event) => (
             <li key={event._id}>
               <Link
-                to={`/events/${event._id}`}
+                to={`/event/${event._id}`}
                 title={event.title}
                 className="flex min-h-[44px] items-center rounded-xl px-3 py-2 text-sm text-stone-600 transition-colors duration-200 hover:bg-stone-100 hover:text-ink"
               >

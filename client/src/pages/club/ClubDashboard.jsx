@@ -154,7 +154,7 @@ const ClubDashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="min-h-screen flex bg-paper">
       <ClubSidebar />
 
       <div className="lg:pl-0">
