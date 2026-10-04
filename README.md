@@ -91,7 +91,10 @@ EventHub/
   api/  # Axios instance setup
   vite.config.js
 
- docs/  # Feature design notes
+ docs/
+    USING-EVENTHUB.md  # Guide for running events, no code
+    dummy-data.md  # What the seed script creates
+    BUGFIX_REPORT.md  # Bugs found and fixed
 
  server/  # Express backend (Node.js)
   src/

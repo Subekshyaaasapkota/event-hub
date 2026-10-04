@@ -472,3 +472,41 @@ removed again and the counts re-checked afterwards.
 - No visual regression test or screenshot baseline exists, and the redesign was
   verified by build output, module compilation and the design linter rather than
   by eye, because no browser automation is installed in this project.
+  ### Fixed while writing the user guide
+
+  **Two required-field markers lied about what the form actually demands.**
+
+  `CreateEvents.jsx` marks up its labels with a `*` for required fields, and
+  the asterisks did not match the validation. The venue name and the map pin
+  both showed `*` unconditionally, but `validateForm` only requires them when
+  the event type is `physical`. Somebody posting an online event was told a
+  field was mandatory and then told it was not. Neither field carries an
+  HTML `required` attribute either, so the visible marker was the only signal
+  and it was wrong in both directions.
+
+  The event poster had the opposite problem and was already correct, which is
+  worth recording because it is easy to assume otherwise: its label reads
+  `(optional to change)` in edit mode and `*` in create mode, matching a rule
+  that permits an existing poster through on edit while demanding a new one
+  on create. `eventsController.js` rejects a create with no file at all, so the
+  marker is right and the validation is right. No change was needed.
+
+  The validation logic itself was checked line by line and is sound: venue and
+  map pin are gated on event type, the deadline cannot be in the past, the
+  event date cannot precede the deadline, and capacity must be at least one.
+  Only the labels were corrected.
+
+  Worth noting for anyone reading the schema: `Events.status` declares a
+  `draft` value and `ManageEventDetails.jsx` renders a "Draft (Not Visible)"
+  badge for it, but nothing anywhere writes that value. Events default to
+  `published` and are visible the instant they save. The badge is dead UI and
+  the `draft` state is unreachable. Nothing is broken by this, but it is a
+  trap for anyone who reads the model and assumes drafts exist.
+
+  `getEventsByFilters` filters on `status`, category, district and free text
+  only. It does not filter by date and does not filter by the organising
+  club's verification, so the API returns past events and returns events from
+  a club that was later unverified. The public Events page therefore sorts
+  genuine history into the same list as upcoming events. Not fixed here: it
+  is a product decision rather than a defect, and changing it needs a decision
+  on what the public list should show.

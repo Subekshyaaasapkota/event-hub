@@ -674,7 +674,8 @@ const CreateEvents = () => {
   <>
   <div className="space-y-4">
   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1">
-  <Search size={12} /> Venue Name *
+  <Search size={12} /> Venue Name{""}
+  {formData.eventType === "physical" ? "*" : "(optional)"}
   </label>
   <input
   type="text"
@@ -690,7 +691,10 @@ const CreateEvents = () => {
   {/* Location Picker */}
   <div className="space-y-4">
   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1">
-  <Navigation size={12} /> Location on Map *
+  <Navigation size={12} /> Location on Map{""}
+  {formData.eventType === "physical"
+  ? "*"
+  : "(not needed for online events)"}
   </label>
   <MapPicker
   onLocationSelect={handleLocationSelect}
