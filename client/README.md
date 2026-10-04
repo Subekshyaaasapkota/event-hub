@@ -91,9 +91,16 @@ const { events, loading, error, fetchEvents } = useEvents();
 ```
 
 `fetchEvents` takes filters where the endpoint supports them, for example
-`fetchEvents({ lat, lng, radius })` for the near me list. Note the server caps
-the radius it will honour at 10km while the client asks for 20, so the client
-number is a request, not a promise.
+`fetchEvents({ lat, lng, radius })` for the near me list.
+
+A detail worth knowing, because the code reads like it says otherwise:
+`getNearbyEvents` has a default parameter of `radiusKm = 10`, and it is easy to
+assume that caps the radius at 10km. It does not. The controller resolves
+`radius === undefined ? 10 : Number(radius)`, so your value is passed straight
+through. The events page asks for 20km and gets 20km. The default only applies
+when no radius is sent at all.
+
+`limit` is the value that is genuinely capped, at 200.
 
 ## Adding a page
 

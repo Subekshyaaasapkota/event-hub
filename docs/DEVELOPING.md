@@ -265,11 +265,20 @@ Category and district filters live in the URL via `useSearchParams`, so those
 lists are linkable. The free-text search does not, so a searched list cannot be
 shared or survived by a reload.
 
-Near-me is a separate filter, not a search. The client requests a 20km radius
-and the server's `getNearbyEvents` defaults to 10km, so the request is capped
-lower than the client asks for. `$near` also needs a 2dsphere index; when it is
-missing, the service catches that specific error and returns an unsorted list
-of published events rather than surfacing a raw Mongo error.
+Near-me is a separate filter, not a search. It is not its own endpoint; it is
+`GET /api/events` with coordinates, which routes to `getNearbyEvents` instead of
+`getAllEvents`. The page sends `radius: 20` and gets 20km.
+
+Do not read the `radiusKm = 10` default in the service signature as a cap. The
+controller resolves `radius === undefined ? 10 : Number(radius)` and passes the
+result straight through, so the default only applies when no radius is sent at
+all. The value that is genuinely capped is `limit`, at 200, via
+`Math.min(maxResults, 200)`. Coordinates are range checked and a request with
+`lat` outside -90..90 or `lng` outside -180..180 is rejected with 400.
+
+`$near` also needs a 2dsphere index; when it is missing, the service catches
+that specific error and returns an unsorted list of published events rather
+than surfacing a raw Mongo error.
 `scripts/syncIndexes.js` creates the index.
 
 A prefix type-ahead using binary search was designed once and never built. It
