@@ -1,15 +1,30 @@
 # EventHub Demo Data
 
-Everything in this file is created by one command, so you can log in and click
-around without typing anything by hand.
+Two commands get you a full working demo, so you can log in and click around
+without typing anything by hand. **Run them in this order.** The first one is
+easy to miss and it is the reason a fresh install can look broken.
 
 ```
 cd server
+
+# 1. Build a poster for each event and upload it to your own Cloudinary
+#    account. The seed points events at these URLs, so skipping this leaves
+#    every event card showing a broken image.
+node src/scripts/generateEventPosters.js
+
+# 2. Write the accounts, clubs, events and registrations.
 npm run seed
 ```
 
+Step 1 needs `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and
+`CLOUDINARY_API_SECRET` in `server/.env`. If you would rather not set up
+Cloudinary, skip both steps and create events by hand through the club
+console instead. You will just have an empty demo.
+
 The seeder is safe to run as many times as you like. It updates existing
-accounts instead of creating duplicates, so the IDs listed below stay valid.
+accounts and events instead of creating duplicates, so the IDs listed below
+stay valid, and it resets registration counts to their starting values rather
+than adding more on top.
 
 ---
 
@@ -42,18 +57,21 @@ the "My Registrations" page is not empty when you present it.
 
 ---
 
-## Your existing accounts
+## Pre-existing accounts the seeder also touches
 
-These were already in the database. The seeder resets their passwords to the
-values below so you can log in with them too.
+The seed script resets a handful of accounts that already existed in the
+database before it was written, not just the `eventhub.dev` ones above. They
+are listed near the top of `server/src/scripts/seedDemoData.js` if you need
+them.
 
-| Role | Email | Password | User ID |
-| --- | --- | --- | --- |
-| Admin | `sapkotasubekshya600@gmail.com` | `Admin@12345` | `6a785777394224e36ed2abc9` |
-| Club | `sapkotasubekshya60@gmail.com` | `Club@12345` | `6a785668394224e36ed2abc8` |
-| Student | `sapkotasubekshya6000@gmail.com` | `Student@12345` | `6a785f0c394224e36ed2abcb` |
-| Student | `123@123.com` | `Student@12345` | `6a79308f2b40eab747b019b8` |
-| Student | `156@56.com` | `Student@12345` | `6a7931282b40eab747b019b9` |
+They are deliberately **not** reproduced in this file. Three of them are real
+personal email addresses, and this repository has a public remote, so writing
+the addresses and their passwords here would publish both. If you forked this
+project, treat any password that appears anywhere in your copy as public.
+
+The reset behaviour is worth knowing regardless: the seeder overwrites the
+password of any account it matches, so do not run it against a database with
+accounts you care about.
 
 ---
 
@@ -97,7 +115,7 @@ Dates are relative to the day you run the seeder, so the list never goes stale.
 | Photography Walk | Already full at 4 of 4 seats, shows the "event is full" state and the full seat bar |
 | Git and GitHub Masterclass | A second free workshop, useful for testing search by category |
 | Tech Startup Pitch Night | A second paid event, useful for testing search by district |
-| Hackathon: Build for Nepal | Left as `draft`, so you can demo publishing it from the club dashboard. Drafts are hidden from search and from the public list |
+| Hackathon: Build for Nepal | Left as `draft`, so you can show that unpublished events are hidden from the public list, from search, and return a 404 to anyone but the owner. See the note below on publishing it |
 | Inter College Debate 2025 | Already in the past, gives the dashboards real history to show |
 
 ---
@@ -110,8 +128,11 @@ Dates are relative to the day you run the seeder, so the list never goes stale.
 2. **Club approval.** Log in as the Admin, open the Admin Dashboard and follow
    the "Verify Clubs" link. Himalayan Trekkers Collective is waiting there,
    approve it and it flips to Approved and verified.
-3. **Search.** On the events page try `?q=robotics`, then filter by
-   `Workshop` and by district `Lalitpur`.
+3. **Search.** On the events page, type `robotics` into the search box. It
+   filters the list in the browser as you type, matching the event title,
+   district or venue. Narrow it further with the category and district
+   filters. Note that the search box does not put its text in the URL, so a
+   filtered list cannot be linked or reloaded.
 4. **Registration limits.** Photography Walk is already full. Try to register
    for it as any Student and the server refuses with `This event is already
    full`, and the seat count stays at 4 of 4. Then register for the Git and
@@ -123,8 +144,25 @@ Dates are relative to the day you run the seeder, so the list never goes stale.
    National Robotics Championship and try editing the amount in the browser
    console before submitting. The server ignores the client value and charges
    the price stored in the database.
-7. **Publishing a draft.** Log in as a Club account, open the Hackathon draft
-   and publish it. It appears in search immediately.
+7. **A draft is invisible to everyone else.** Log in as a Club account and open
+   the Hackathon. You can see it, because you own it, and its badge reads
+   "Draft (Not Visible)". Log out, or open it in a private window, and it is a
+   404. The events list and search both exclude it.
+
+   Note that you cannot promote it to published from the interface. Creating an
+   event always sets its status to published, and editing it does not change the
+   status. There is no publish or unpublish button anywhere in the club console,
+   so the only way to publish this draft is to edit the record directly:
+
+   ```js
+   db.events.updateOne(
+     { title: "Hackathon: Build for Nepal" },
+     { $set: { status: "published" } }
+   )
+   ```
+
+   If you are demonstrating this, do it in the database before you present,
+   because there is no button to click on stage.
 8. **Past event history.** Open Event Analytics as a Club owner and the
    completed Inter College Debate is counted there alongside your live events.
 
@@ -139,9 +177,11 @@ Dates are relative to the day you run the seeder, so the list never goes stale.
 | `events` | Events with capacity, pricing, location and status |
 | `registrations` | Who registered for what, with payment state |
 
-Posters and club logos use generated avatar URLs from `ui-avatars.com`, so
-there are no image files to download and the demo works offline for everything
-except viewing those two images.
+Event **posters** are generated artwork uploaded to your own Cloudinary
+account, which is why step 1 exists and why it needs your credentials. Club
+**logos** still point at `ui-avatars.com`, which returns a flat coloured disc
+with the club's initials on it. That is why club logos look plain while event
+posters do not. It is a known inconsistency, not a rendering fault.
 
 A machine readable copy of all IDs is written to `docs/dummy-data.seed.json`
 on every run, in case the IDs in this file ever drift.
@@ -150,15 +190,23 @@ on every run, in case the IDs in this file ever drift.
 
 ## Resetting
 
-To wipe the demo data and start over, delete the seeded collections from
-MongoDB Atlas or Compass:
+To wipe the demo events and start over, delete them from MongoDB Compass or a
+`mongosh` shell:
 
 ```js
 db.events.deleteMany({ title: { $regex: "Bootcamp|Seminar|Robotics Championship|Photography Walk|Git and GitHub|Pitch Night|Build for Nepal|Inter College Debate" } })
-db.registrations.deleteMany({})
+db.registrations.deleteMany({ eventId: { $in: db.events.find({}, { _id: 1 }).map(e => e._id) } })
 ```
 
-Then run `npm run seed` again to get a clean set with fresh IDs.
+The second line is scoped to the events that still exist, so it will not wipe
+registrations you care about from other events. `db.registrations.deleteMany({})`
+with no filter deletes every registration in the database, which on a shared
+cluster is not a thing to paste.
+
+Then run `npm run seed` again. The new events get **new** IDs, so any table in
+this file that quotes an event ID goes stale at that point. `docs/dummy-data.seed.json`
+is rewritten on every run and is the reliable source; this file is the readable
+one.
 
 ---
 

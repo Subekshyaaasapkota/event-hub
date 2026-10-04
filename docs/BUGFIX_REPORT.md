@@ -685,3 +685,182 @@ removed again and the counts re-checked afterwards.
   The seeded demo data produces `ui-avatars` style posters, so a fresh install
   looks emptier than a real one. That is a seed problem rather than a UI one and
   the placeholder system already handles it honestly.
+  ### Fixed: real credentials were committed to the repository
+
+  #### What was exposed
+
+  `server/README.MD` was not a README. It was a scratch file containing three
+  account email and password pairs, a complete signed JWT, and a stray
+  commented out `Events.find()` line.
+
+  The file is tracked, so all of it is in git history. The commit that
+  introduced it, `bbd1928`, is an ancestor of `origin/main`, and the remote is
+  `https://github.com/Subekshyaaasapkota/event-hub.git`. The credentials have
+  therefore left the machine.
+
+  The JWT was decoded to check what it actually granted:
+
+  ```
+  roles   = ["Admin"]
+  email   = eventhub@gmail.com
+  issued  = 2026-02-21 18:04:41 UTC
+  expires = 2026-02-22 18:04:41 UTC
+  ```
+
+  It expired the following day and is worthless now. The passwords are the
+  problem, because a password does not expire on its own.
+
+  #### What was done
+
+  `server/README.MD` was replaced with an actual README for the server, written
+  without any credential, token or personal address, and with a section
+  warning about this specific incident so the next person does not repeat it.
+
+  #### What was deliberately not done
+
+  Git history was not rewritten. Purging a commit from published history means
+  force pushing, which rewrites every commit after it and desynchronises every
+  clone. That is a decision for the repository owner, not something to do
+  unasked, and it does not help if the commit was already forked or cloned
+  elsewhere.
+
+  So the honest remedy is rotation, not erasure:
+
+  1. Change the password of every account listed in that file if it exists in
+     the live database.
+  2. If the same values were ever reused anywhere, change them there too.
+  3. Decide separately whether to rewrite history. It helps only against future
+     clones, not against anyone who already has the repository.
+
+  `Accounts.md` holds the rotation checklist for the other services. It is
+  gitignored, which is why nothing sensitive lives there.
+
+  ### Fixed: documentation that did not match the code
+
+  Every document was re-read against the source rather than against itself, and
+  several were describing software that does not exist.
+
+  #### Deleted: a plan for a feature that was never built
+
+  `docs/SEARCH_IMPLEMENTATION.md` described a binary search over event titles
+  feeding a glassmorphism type-ahead dropdown, with `suggestions`,
+  `showDropdown` and `highlightIndex` state to be added to `Events.jsx`. It was
+  titled an implementation plan, and it ended with the line
+  `Created by Antigravity AI Assistant`.
+
+  None of it existed. There is no dropdown, no `findRange`, no keyboard arrow
+  handling, and no prefix search. The file was deleted rather than corrected,
+  because a plan for unimplemented software is not documentation and keeping it
+  only invites someone to read it as a description of the current behaviour.
+
+  The thinking behind it was worth preserving, so it now lives in
+  `docs/DEVELOPING.md`: why the events page filters in the browser instead, and
+  why a prefix search would be the wrong tool for these event titles.
+
+  Two claims in the deleted file were checkably false:
+
+  - `client/src/utils/eventSorter.js` was described as the helper that keeps
+    events alphabetised for searching. The file exists and exports
+    `sortEventsPriority`, but nothing imports it. It is dead code.
+  - The claimed benefit was `O(log N)` search. The actual implementation is a
+    MongoDB regex query, or an `includes` check in the browser, neither of which
+    is `O(log N)`.
+
+  #### Rewritten: a plan file that was never a README
+
+  `client/README.md` was titled "Club Verification & Email Workflow Plan". It
+  described work as future tense ("We will add", "Proposed File Changes"), and
+  contained an IDE artefact link to
+  `cci:1://file:///w:/PROJECT/EventHub/client/src/pages/admin/AllUsers.jsx`,
+  pointing at a `w:` drive path that does not exist on this machine.
+
+  Its instructions were also obsolete. It said to install `nodemailer` and
+  configure `EMAIL_USER` and `EMAIL_PASS`. The mailer is Resend, configured with
+  `RESEND_API_KEY` and `EMAIL_FROM`, and `nodemailer` is installed but never
+  imported.
+
+  Replaced with a real client README: how to run it, why there is no Vite proxy,
+  the folder layout, the route and hook conventions, and the two silent failure
+  modes specific to this app.
+
+  #### Corrected: the recommendation engine document
+
+  `docs/RECOMMENDATION_ENGINE.md` had the right algorithm and the wrong
+  description of where it lives. It said the logic was in `getRecommendedEvents`
+  in `eventService.js`. The service only orchestrates. The scoring and sorting
+  are in `server/src/utils/recommendationEngine.js`.
+
+  More importantly it omitted the two behaviours that actually decide what a
+  student sees:
+
+  - With interests set, events scoring zero are dropped, so the result can be
+    fewer than ten or completely empty.
+  - With no interests set, scoring is skipped entirely and every published
+    event is sorted by date instead.
+
+  The same endpoint therefore returns two completely different kinds of list
+  depending on profile completeness, with nothing in the response saying which
+  mode ran. That is worth writing down. The keyword match is also a substring
+  test, not a word test, so an interest of `go` matches `google`.
+
+  #### Corrected: the demo data document described the wrong image source
+
+  `docs/dummy-data.md` said posters and club logos both use `ui-avatars.com`,
+  and that the demo works offline apart from those two images. Posters have
+  moved to generated artwork uploaded to Cloudinary. Club logos still use
+  `ui-avatars.com`.
+
+  This mattered more than a stale sentence, because `README.md` correctly said
+  the seed needs Cloudinary credentials while `dummy-data.md` said no image
+  files were involved. Following the wrong document meant never running the
+  poster generator and ending up with eight events whose images all 404.
+
+  The missing step is now documented in both files, in order:
+
+  ```
+  node src/scripts/generateEventPosters.js
+  npm run seed
+  ```
+
+  Also corrected in that file: a `?q=robotics` instruction, when the events page
+  does not read a `q` parameter and filters in the browser; a `deleteMany({})`
+  reset snippet that would have deleted every registration on a shared cluster;
+  and a table of real personal email addresses with their passwords, which has
+  been removed for the reason given above.
+
+  #### Corrected: the root README described features that are not built
+
+  Each claim below was checked by searching the codebase, not by reading the
+  README again.
+
+  | Claim in README | Reality |
+  | --- | --- |
+  | Automated deadline alerts and notifications | No notification feature. The only match in the whole repo is one log line in `emailService.js` |
+  | Event approval and content moderation | No such workflow. `status` is draft, published, completed, set by the owning club |
+  | Participant data export (CSV) | `utils/csv.js` implements a complete CSV exporter and nothing imports it |
+  | Export event information for offline access | No such feature |
+  | Real-time registration tracking | No WebSocket, no SSE, no socket.io. Zero references |
+  | Smart prioritisation by popularity and urgency | Recommendations score against the user's saved interests, not popularity |
+  | Security: Helmet | Not a dependency and not imported. Zero references |
+  | Logging: Morgan | Not a dependency. There is a custom `middlewares/logger.js`, which is what the table now says |
+  | Email: Nodemailer, Resend | Resend only. `nodemailer` is installed but never imported |
+
+  Three smaller corrections:
+
+  - The project structure block listed `admin/`, `auth/`, `common/`,
+    `organizer/`, `layout/` and `protected/` as direct children of `client/src`.
+    They are all under `client/src/components/`, and the real directory is
+    `Organizer` with a capital O.
+  - `POST /api/contact/` was mounted in `app.js` and documented nowhere.
+  - The footer read `Made with  for Nepal's IT Community`, with a double space
+    where an emoji had been, and the copyright line contradicted `LICENSE`.
+
+  A note was also added listing what the project does not do, because every one
+  of these was a feature listed as working.
+
+  #### Not fixed
+
+  The four screenshots are from the old interface and no replacement exists. The
+  section is now labelled as out of date and says so plainly, instead of
+  presenting them as current. They can only be replaced from a browser, which
+  this environment does not have.

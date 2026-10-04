@@ -244,12 +244,60 @@ paid registration path fails, which is expected locally.
 
 `POST /` accepts a contact message. No auth.
 
+### How search actually works
+
+There are two search paths and they cover different fields, which is a
+recurring source of confusion.
+
+`GET /api/events/search?q=` is server-side: one case-insensitive regex across
+`title`, `description`, `venue` and `tags`, plus optional `category` and
+`district`. User input goes through `escapeRegex` first, so `c++` and `(a|b)`
+are literal text, not patterns.
+
+The public events page does **not** use that endpoint. It calls `GET /api/events`
+once and filters in the browser on `title`, `district` and `venue` with
+`includes`, on every render, with no network call and no debounce. So
+`description` and `tags` are only searchable through the endpoint the page
+ignores. If a search appears to miss an event because of its description, that
+is why.
+
+Category and district filters live in the URL via `useSearchParams`, so those
+lists are linkable. The free-text search does not, so a searched list cannot be
+shared or survived by a reload.
+
+Near-me is a separate filter, not a search. The client requests a 20km radius
+and the server's `getNearbyEvents` defaults to 10km, so the request is capped
+lower than the client asks for. `$near` also needs a 2dsphere index; when it is
+missing, the service catches that specific error and returns an unsorted list
+of published events rather than surfacing a raw Mongo error.
+`scripts/syncIndexes.js` creates the index.
+
+A prefix type-ahead using binary search was designed once and never built. It
+was dropped deliberately, and the reasoning is worth keeping before anyone tries
+again: the dataset is single or double digit events, so an in-browser filter is
+already imperceptibly fast and a sort plus a dropdown would add complexity to
+remove a cost that does not exist. More importantly, binary search matches
+*prefixes*, and these titles are not written as prefixes of what people search
+for. Searching `robotics` should find `National Robotics Championship`, which a
+prefix search on title cannot do.
+
+`client/src/utils/eventSorter.js` is a leftover from that plan. It exports
+`sortEventsPriority` and nothing imports it.
+
 ## State on the client
 
 Redux Toolkit, four slices under `client/src/redux`: `auth`, `events`,
-`organizer` and `admin`. Each has a slice and an action file. Use the typed
-hooks in `client/src/redux/hooks.js` rather than the raw `useDispatch`, so state
-keeps its types.
+`organizer` and `admin`. Each has a slice and an action file.
+
+`redux/hooks.js` exports `useAppDispatch` and `useAppSelector`. Use them rather
+than importing `useDispatch` and `useSelector` directly, so there is a single
+place to change if this ever becomes TypeScript.
+
+Be clear about what that buys you today: **nothing**. This project has zero
+`.ts` files and no `tsconfig.json`, and `useAppSelector` is a plain re-export
+of `useSelector`. There is no type safety in it whatsoever. It is a convention,
+not a requirement, and it is worth knowing that before anyone cites it as
+enforcement.
 
 Thin hooks in `client/src/hooks` wrap the slices so components do not import
 Redux directly: `useAuth`, `useEvents`, `useOrganizer`, `useAdmin`,

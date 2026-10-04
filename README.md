@@ -11,44 +11,50 @@
 
 **The Challenge**: Students across Nepal miss valuable workshops, hackathons, and tech events due to scattered social media announcements. Meanwhile, organizations struggle to reach their target audience effectively.
 
-**EventHub's Solution**: A unified, intelligent platform that brings all verified IT events to one searchable hub, complete with smart prioritization, location-based discovery, and automated notifications.
+**EventHub's Solution**: one place to see every event a verified club has posted, searchable by keyword, category and district, with registration that handles both free and paid events.
 
 ## Key Highlights
 
-- **Centralized Verified Hub**: All events in one place with organization verification
-- **Smart Prioritization Algorithm**: Events ranked by popularity and urgency - never miss important deadlines
-- **Location-Based Search**: Discover events in your district with interactive mapping
-- **Streamlined Event Management**: Organizers get real-time registration tracking and analytics
-- **Role-Based Access Control**: Secure system for students, clubs, and admins
-- **Seamless Registration**: One-click signup with automated deadline alerts
+- **Verified organizers**: every club is reviewed by an admin before it can post
+- **Two ways to find events**: filter the list by category and district, or let
+  the browser find events near you
+- **Recommendations from your profile**: events scored against your listed
+  interests, see [docs/RECOMMENDATION_ENGINE.md](./docs/RECOMMENDATION_ENGINE.md)
+- **Registration tracking**: clubs see who signed up, and analytics per event
+- **Role-based access control**: students, clubs and admins see different
+  interfaces and different endpoints
+- **Payments by card or wallet**: Khalti and eSewa, with the amount always
+  resolved on the server
 
 ## Features
 
 ### For Students
 
-- Browse and search events with advanced filters
-- Location-based event discovery with interactive maps
-- One-click event registration with confirmation
-- Personal dashboard to track registered events
-- Automated deadline alerts and notifications
-- Export event information for offline access
+- Browse, search and filter published events by category and district
+- Find events near you using your browser location
+- Register for an event, free or paid, and track your registrations
+- Maintain a profile with your interests and skills
+- Get recommended events based on the interests you have saved
 
 ### For Clubs (verified organizers)
 
-- Intuitive event creation and management interface
-- Real-time registration tracking and analytics
-- Participant list management and data export (CSV)
-- Event image uploads and detailed descriptions
-- External registration link support (Google Sheets integration)
-- Club portal with performance insights
+- Apply for verification, then create and edit your own events
+- See who registered, and per-event analytics
+- Link an external Google Sheet to an event for signups
+- Upload a poster and set capacity, price and district
+- Manage your club profile
 
 ### For Administrators
 
-- Comprehensive admin dashboard for platform oversight
-- Event approval and content moderation system
-- User and club management with permission controls
-- Role-based access control (RBAC)
-- Platform analytics and reporting tools
+- Approve or reject club applications
+- See every user, club and event on the platform
+- Delete users
+- View all registrations across every event
+
+> Some things this project does **not** do, so you are not misled: there are no
+> email or push notifications, no event approval workflow for organizers (clubs
+> publish their own events), no CSV export button in the interface, and nothing
+> updates live without a page refresh.
 
 ## Tech Stack
 
@@ -64,52 +70,56 @@
 | **Backend**  | Node.js, Express.js  | Scalable server runtime  |
 | **Database**  | MongoDB, Mongoose  | Flexible document storage with validation  |
 | **Authentication**  | JWT, Bcryptjs  | Secure session management  |
-| **Security**  | Helmet, CORS  | HTTP security headers & cross-origin handling |
+| **HTTP**  | cors, cookie-parser  | Cross-origin handling and cookie parsing  |
 | **File Management**  | Multer, Cloudinary  | Image uploads & cloud storage  |
-| **Email**  | Nodemailer, Resend  | Transactional email notifications  |
-| **Logging**  | Morgan  | HTTP request tracking  |
+| **Email**  | Resend  | Club verification email  |
+| **Logging**  | Custom middleware  | HTTP request logging  |
 
 ## Project Structure
 
 ```
 EventHub/
- client/  # React frontend (Vite + Redux)
-  src/
-  components/  # Reusable UI components
-  admin/  # Admin-specific UI
-  auth/  # Auth flows (Login, Signup, etc.)
-  common/  # Shared components
-  organizer/  # Organizer features
-  layout/  # Layout wrappers
-  protected/  # Route guards
-  pages/  # Full page components
-  redux/  # Redux store & slices
-  hooks/  # Custom React hooks
-  services/  # API service layer
-  routes/  # Routing configuration
-  utils/  # Helpers & utilities
-  api/  # Axios instance setup
-  vite.config.js
+  client/                    React frontend
+    src/
+      components/
+        common/              Navbar, Footer, dialogs, shared cards
+        layout/              Page shells that wrap a route group
+        auth/                Login and Signup pieces
+        admin/               Admin-only pieces
+        protected/           Route guards
+        Organizer/           Club-only pieces
+      pages/
+        public/              Events, EventDetails
+        user/                Dashboard, Profile, RegisteredEvents
+        club/                Club console
+        admin/               Admin console
+      hooks/                 useAuth, useEvents, useAdmin
+      redux/                 Store and slices
+      services/              Axios calls
+      routes/                AppRoutes.jsx, every URL lives here
+      utils/                 Formatters, image URLs, constants
+      api/                   Axios instance
+      index.css              Design tokens
 
- docs/
-    USING-EVENTHUB.md  # Guide for running events, no code
-    DEVELOPING.md  # Architecture and API reference for contributors
-    dummy-data.md  # What the seed script creates
-    BUGFIX_REPORT.md  # Bugs found and fixed
+  server/                    Express backend
+    src/
+      app.js                 Express app and middleware
+      database.js            MongoDB connection
+      routes/                One file per resource
+      controllers/           Request handlers
+      services/              Business logic and queries
+      models/                Mongoose schemas
+      middlewares/           auth, roles, uploads, logger
+      utils/                 Email, payments, recommendations
+      config/                Cloudinary
+      scripts/               Seed, poster generator, index sync
 
- server/  # Express backend (Node.js)
-  src/
-  controllers/  # Request handlers
-  models/  # MongoDB schemas
-  routes/  # API route definitions
-  services/  # Business logic layer
-  middlewares/  # Express middlewares
-  helpers/  # Utility functions
-  config/  # Configuration (Cloudinary, etc.)
-  utils/  # Payment + email helpers
-  database.js  # MongoDB connection
-  app.js  # Express app setup
-  package.json
+  docs/
+    USING-EVENTHUB.md        Guide for running events, no code
+    DEVELOPING.md            Architecture and API reference
+    RECOMMENDATION_ENGINE.md How recommendations are scored
+    dummy-data.md            What the seed creates
+    BUGFIX_REPORT.md         Bugs found and fixed
 ```
 
 ## Installation
@@ -125,6 +135,7 @@ EventHub/
 #### 1. Clone the repository
 
 ```bash
+# Replace with your own fork or clone URL
 git clone https://github.com/yourusername/EventHub.git
 cd EventHub
 ```
@@ -184,25 +195,32 @@ The frontend runs on **http://localhost:5173**.
 #### 4. Load the demo events (optional but recommended)
 
 An empty install has no events, so the pages you most want to look at will be
-empty. The seed script creates eight events with generated posters, a verified
-demo club and a set of registrants.
+empty. Two commands fill it in, and **the order matters**.
 
 ```bash
 cd server
+
+# 1. Build a poster for each event and upload it to your Cloudinary account.
+node src/scripts/generateEventPosters.js
+
+# 2. Write the accounts, clubs, events and registrations.
 npm run seed
 ```
+
+Step 1 first, because the seed points every event at the images step 1
+uploads. Skip it and you get eight events whose posters are all broken.
+
+> Both steps need `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and
+> `CLOUDINARY_API_SECRET` in `server/.env`, since the posters are uploaded to
+> **your** account. If you would rather not set up Cloudinary, skip this
+> section entirely and create events by hand through the club console instead.
 
 The seed is idempotent. It upserts by event title, so running it twice will not
 duplicate anything, and it resets registration counts to their starting values
 rather than stacking more on top.
 
-> The demo posters are uploaded to **your** Cloudinary account, so
-> `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET` must
-> be set first. The script exits with an explanation rather than writing events
-> with broken image URLs. If you would rather not set up Cloudinary, create
-> events through the club console instead and skip this step.
-
-See [docs/dummy-data.md](./docs/dummy-data.md) for exactly what it creates.
+See [docs/dummy-data.md](./docs/dummy-data.md) for exactly what it creates,
+including the demo accounts and their passwords.
 
 #### 5. Run again later
 
@@ -309,6 +327,12 @@ All endpoints are prefixed with `/api`.
 | GET  | `/registrations/my`  | Registrations belonging to the signed-in user |
 | GET  | `/registrations/club/all`  | All registrations for the signed-in club  |
 
+### Contact
+
+| Method | Endpoint  | Description  |
+| ------ | ------------- | ---------------------------------- |
+| POST  | `/contact/`  | Submit a message from the contact form |
+
 ### Clubs
 
 | Method | Endpoint  | Description  |
@@ -382,29 +406,33 @@ npm run preview  # Preview the production build locally
 ### Backend scripts (`cd server`)
 
 ```bash
-npm run dev  # Start with nodemon (auto-restart on changes)
-npm start  # Run the server without nodemon
+npm run dev    # Start with nodemon (auto-restart on changes)
+npm start      # Run the server without nodemon
+npm run seed   # Write the demo accounts, clubs, events and registrations
 ```
 
-> The backend has no automated test suite yet, so `npm test` is not available.
+Two one-off scripts, run by hand rather than through npm:
+
+```bash
+node src/scripts/generateEventPosters.js   # Upload demo posters to Cloudinary
+node src/scripts/syncIndexes.js            # Create the MongoDB indexes
+```
+
+> There is no automated test suite on either side, so `npm test` is not
+> available. `npm run lint` and `npm run build` in `client/` are the only
+> automated checks the project has.
 
 ## Screenshots
 
-### Event Discovery
+> **These are out of date.** The images below are from an earlier version of the
+> interface, before it was rebuilt onto the current design system. The layouts,
+> colours and navigation shown no longer match the application, so do not use
+> them as a reference for how it looks now. They are kept only until proper
+> screenshots can be taken from a running instance.
 
-![EventHub Homepage](./client/public/screenshots/1.jpeg)
-
-### Event Registration Flow
-
-![Event Registration](./client/public/screenshots/2.jpeg)
-
-### Home Page
-
-![User Dashboard](./client/public/screenshots/3.jpeg)
-
-### Organizer Dashboard
-
-![Organizer Portal](./client/public/screenshots/4.jpeg)
+| Event Discovery | Registration | Student home | Club dashboard |
+| --- | --- | --- | --- |
+| ![Old events page](./client/public/screenshots/1.jpeg) | ![Old registration flow](./client/public/screenshots/2.jpeg) | ![Old dashboard](./client/public/screenshots/3.jpeg) | ![Old club portal](./client/public/screenshots/4.jpeg) |
 
 ##  License
 
@@ -412,8 +440,4 @@ This project is licensed under the **ISC License** - see the [LICENSE](LICENSE) 
 
 ## Copyright
 
-© Arun Neupane, All rights reserved.
-
----
-
-**Made with  for Nepal's IT Community**
+© Arun Neupane and contributors. Licensed under the [ISC License](LICENSE).
