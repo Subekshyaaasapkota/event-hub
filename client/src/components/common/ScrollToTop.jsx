@@ -51,13 +51,17 @@ const ScrollToTop = () => {
         aria-hidden={visible ? undefined : true}
         aria-label="Back to top"
         title="Back to top"
-        className={`press fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-[80] inline-flex h-14 w-14 cursor-pointer items-center justify-center rounded-2xl bg-ink text-white shadow-[0_14px_30px_-12px_rgba(17,17,20,0.5)] transition-[background-color,transform,opacity] duration-200 ease-out hover:bg-ink-soft hover:shadow-[0_18px_36px_-12px_rgba(17,17,20,0.55)] sm:right-6 md:bottom-8 md:right-8 ${
+        // Matches the calendar trigger: 48pt circle, short press scale, no
+        // hover shadow that grows the control. 48pt clears the iOS 44pt
+        // minimum target while reading far lighter than the 56pt square it
+        // replaced.
+        className={`press fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-[80] inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-ink text-white shadow-[0_6px_16px_-6px_rgba(17,17,20,0.38)] transition-[background-color,transform,opacity] duration-150 ease-out hover:bg-ink-soft active:scale-95 sm:right-6 md:bottom-8 md:right-8 ${
           visible
             ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
             : "pointer-events-none translate-y-3 scale-95 opacity-0"
         }`}
       >
-        <ArrowUp size={22} aria-hidden="true" />
+        <ArrowUp size={20} aria-hidden="true" />
       </button>
     </>
   );

@@ -409,14 +409,18 @@ className={`fixed inset-x-4 bottom-[calc(8.5rem+env(safe-area-inset-bottom))] z-
   aria-expanded={isOpen}
   aria-controls="event-calendar-panel"
   aria-label={isOpen ? "Close event calendar" : "Open event calendar"}
-className="press fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-4 z-[80] sm:left-6 md:bottom-8 inline-flex h-14 w-14 cursor-pointer items-center justify-center rounded-2xl bg-ink text-white shadow-[0_14px_30px_-12px_rgba(17,17,20,0.5)] transition-[background-color,transform] duration-200 ease-out hover:bg-ink-soft hover:shadow-[0_18px_36px_-12px_rgba(17,17,20,0.55)] md:bottom-8 md:left-8"
-
+// iOS HIG: a 48pt circle rather than a 56pt rounded square, with a short press
+// scale instead of a hover shadow that grew the button on hover. 48pt still
+// clears the 44pt minimum target, and a circle reads as a floating control
+// rather than a panel corner.
+className="press fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-4 z-[80] sm:left-6 md:bottom-8 inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-ink text-white shadow-[0_6px_16px_-6px_rgba(17,17,20,0.38)] transition-[background-color,transform] duration-150 ease-out hover:bg-ink-soft active:scale-95 md:bottom-8 md:left-8"
   >
   {isOpen ? (
-  <X size={22} aria-hidden="true" />
+  <X size={20} aria-hidden="true" />
   ) : (
-  <CalendarIcon size={22} aria-hidden="true" />
+  <CalendarIcon size={20} aria-hidden="true" />
   )}
+
   </button>
   </>
   );

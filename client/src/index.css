@@ -31,11 +31,17 @@ body {
  * There was no :focus-visible rule anywhere in the app, so tabbing through the
  * interface moved focus invisibly. This restores a visible ring on every
  * focusable element without touching the default ring on mouse clicks.
+ *
+ * The ring was #4338ca, an indigo left over from the original palette, on a page
+ * that is otherwise paper and ink. It now uses ink with a white inner edge, so
+ * it stays visible on a dark button, a white card and the paper background
+ * alike without relying on colour alone.
  */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-  outline: 2px solid #4338ca;
+  outline: 2px solid var(--color-ink);
   outline-offset: 2px;
   border-radius: 4px;
+  box-shadow: 0 0 0 4px var(--color-paper);
 }
 
 /* Anchor jumps should not snap, but must not move the page for reduced motion. */
@@ -300,5 +306,61 @@ html {
 
   @page {
     margin: 16mm;
+  }
+}
+
+/*
+ * Scrollbars.
+ *
+ * Chrome, Safari and Edge draw a wide grey scrollbar that reads as part of a
+ * different application sitting on top of the page. Firefox does the same thing
+ * with its own default. Both are replaced here so the scrollbar is ink on paper
+ * like everything else.
+ *
+ * Firefox and the WebKit engines have no shared vocabulary for this, so both are
+ * declared. The scrollbar-width and scrollbar-color pair is the standard and
+ * takes precedence in Firefox; the pseudo-elements are ignored there.
+ *
+ * Colours are the app's own: a stone-500 thumb against a near-white track is
+ * about 4.4:1, which clears the 3:1 that WCAG asks of a control boundary. A
+ * lighter thumb looked tidier and failed that.
+ */
+:root {
+  scrollbar-color: #78716c transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #a8a29e;
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  background-clip: content-box;
+}
+
+/* Hover darkens rather than growing, so the thumb never reflows the page. */
+::-webkit-scrollbar-thumb:hover {
+  background-color: #78716c;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/*
+ * Only the light theme exists today. This is here so the dark block has one
+ * obvious home rather than being scattered as overrides if it is ever added.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: light;
   }
 }
