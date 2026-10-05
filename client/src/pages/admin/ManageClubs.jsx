@@ -39,7 +39,8 @@ const AdminManageClubs = () => {
   const [confirmDialog, setConfirmDialog] = useState({
   isOpen: false,
   title: "",
-  message: "",
+    message: "",
+    type: "default",
   onConfirm: null,
   });
 
@@ -108,17 +109,18 @@ const AdminManageClubs = () => {
   });
   };
 
-  const handleApprove = (clubId) => {
+const handleApprove = (clubId, name) => {
   setConfirmDialog({
-  isOpen: true,
-  title: "Approve Club",
-  message:
-  "Approve this club? They will be notified via email and can start hosting events.",
-  onConfirm: async () => {
-  try {
-  await approveClub(clubId);
-  toast.success("Club approved and welcome email sent!");
-  setSelectedClub(null);
+    isOpen: true,
+    title: `Approve ${name}`,
+    message:
+    "The club gets its club features and the owner is emailed. They can start hosting events once approved.",
+    type: "default",
+    onConfirm: async () => {
+      try {
+        await approveClub(clubId);
+        toast.success("Club approved.");
+        setSelectedClub(null);
   } catch (error) {
   toast.error(error.message || "Failed to approve club.");
   } finally {
@@ -128,12 +130,18 @@ const AdminManageClubs = () => {
   });
   };
 
-  const handleReject = (clubId) => {
+const handleReject = (clubId, name) => {
   setConfirmDialog({
-  isOpen: true,
-  title: "Reject Club",
-  message: "Reject this club application?",
-  onConfirm: async () => {
+    isOpen: true,
+    title: `Reject ${name}`,
+    //  Says the owner sees this and can update their application to reapply,
+    //  which is what the code does: updateClubProfile edits the existing club
+    //  rather than creating a second one. No email is sent on rejection, so the
+    //  old copy claiming the user "will be notified" was not true.
+    message:
+    "The club will not get club features. The owner can see this and update their application to try again.",
+    type: "danger",
+    onConfirm: async () => {
   try {
   await rejectClub(clubId);
   toast.success("Club request rejected.");
@@ -434,13 +442,13 @@ const AdminManageClubs = () => {
   {selectedClub.status === "Pending" ? (
   <div className="flex gap-4">
   <button
-  onClick={() => handleApprove(selectedClub._id)}
+  onClick={() => handleApprove(selectedClub._id, selectedClub.name)}
   className="flex-1 py-5 bg-emerald-600 text-white rounded-3xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-emerald-700 transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-100"
   >
   Verify Organization <ShieldCheck size={18} />
   </button>
   <button
-  onClick={() => handleReject(selectedClub._id)}
+  onClick={() => handleReject(selectedClub._id, selectedClub.name)}
   className="flex-1 py-5 bg-red-50 text-red-500 rounded-3xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-3"
   >
   Decline Request <XCircle size={18} />
@@ -471,7 +479,7 @@ const AdminManageClubs = () => {
   onConfirm={confirmDialog.onConfirm}
   title={confirmDialog.title}
   message={confirmDialog.message}
-  type="warning"
+  type={confirmDialog.type}
   />
   </div>
   );

@@ -82,15 +82,28 @@ const approveClub = async (clubId) => {
   { new: true }  // <- change 'returnDocument: after' to this
   ).populate("createdBy", "name email district college");
 
-  if (club && club.createdBy) {
-  await User.findByIdAndUpdate(club.createdBy._id, {
-  $addToSet: { roles: "Club" },
-  });
-  console.log('Club email and club name =>', club.email, club.name);
-  //  club.email is the club's own email from the schema
-  await sendVerificationEmail(club.email, club.name);
+if (club && club.createdBy) {
+    await User.findByIdAndUpdate(club.createdBy._id, {
+      $addToSet: { roles: "Club" },
+    });
+    //  club.email is the club's own email from the schema
+    //
+    //  The email is sent after the write has already committed, and a failure
+    //  here is caught rather than rethrown. It used to propagate: an SMTP
+    //  outage made approveClub reject, so the admin saw "failed to approve"
+    //  while the club was in fact Approved and the owner had the Club role.
+    //  The natural response to that error was to press Approve again, which
+    //  re-ran the whole thing. The club is approved or it is not, and that is
+    //  decided by the database, not by whether a mail server answered.
+    try {
+      await sendVerificationEmail(club.email, club.name);
+    } catch (error) {
+      console.error(
+        `Club "${club.name}" was approved but the verification email failed:`,
+        error.message,
+      );
+    }
   }
-  console.log("Mail send is done and back to service")
   return club;
 };
 

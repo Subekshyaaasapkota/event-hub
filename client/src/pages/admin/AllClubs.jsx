@@ -26,37 +26,31 @@ const AdminAllClubs = () => {
   const { adminData, fetchClubs, approveClub, rejectClub } = useAdmin();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [confirmDialog, setConfirmDialog] = useState({
-  isOpen: false,
-  title: "",
-  message: "",
-  onConfirm: null,
+const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "default",
+    onConfirm: null,
   });
 
   useEffect(() => {
-  console.log("Fetching clubs...");
   fetchClubs();
   }, [fetchClubs]);
 
-  // Debug log to see what data we're getting
-  useEffect(() => {
-  console.log("Admin data in AllClubs:", adminData);
-  console.log("Clubs data:", adminData.clubs);
-  }, [adminData]);
-
-  const handleApproveClub = (id) => {
+  const handleApproveClub = (id, name) => {
   setConfirmDialog({
   isOpen: true,
-  title: "Approve Club",
-  message:
-  "Approve this club? The user will be able to access club features.",
+title: `Approve ${name}`,
+    message:
+    "This gives the club owner the club features. You can still reject it afterwards.",
+    type: "default",
   onConfirm: async () => {
   try {
   await approveClub(id);
   toast.success("Club approved successfully!");
   setConfirmDialog({ isOpen: false });
   } catch (error) {
-  console.error("Failed to approve club:", error);
   toast.error(
   error.message || "Failed to approve club. Please try again.",
   );
@@ -66,18 +60,22 @@ const AdminAllClubs = () => {
   });
   };
 
-  const handleRejectClub = (id) => {
+  const handleRejectClub = (id, name) => {
   setConfirmDialog({
   isOpen: true,
-  title: "Reject Club",
-  message: "Reject this club? The user will be notified.",
+title: `Reject ${name}`,
+    message:
+    "The club will not get club features. The owner can see this and apply again.",
+    // Was "warning", which ConfirmDialog does not recognise. It only branches on
+    // "danger", so a rejection that denies someone access looked identical to an
+    // approval that grants it. Both buttons were styled as safe.
+    type: "danger",
   onConfirm: async () => {
   try {
   await rejectClub(id);
   toast.success("Club rejected successfully!");
   setConfirmDialog({ isOpen: false });
   } catch (error) {
-  console.error("Failed to reject club:", error);
   toast.error(
   error.message || "Failed to reject club. Please try again.",
   );
@@ -376,13 +374,13 @@ const AdminAllClubs = () => {
   {club.status === "Pending" && (
   <div className="flex gap-2">
   <button
-  onClick={() => handleApproveClub(club._id || club.id)}
+  onClick={() => handleApproveClub(club._id || club.id, club.name)}
   className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-emerald-700 transition active:scale-95"
   >
   <CheckCircle size={16} /> Approve
   </button>
   <button
-  onClick={() => handleRejectClub(club._id || club.id)}
+  onClick={() => handleRejectClub(club._id || club.id, club.name)}
   className="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-red-700 transition active:scale-95"
   >
   <XCircle size={16} /> Reject
@@ -410,9 +408,9 @@ const AdminAllClubs = () => {
   isOpen={confirmDialog.isOpen}
   onClose={() => setConfirmDialog({ isOpen: false })}
   onConfirm={confirmDialog.onConfirm}
-  title={confirmDialog.title}
-  message={confirmDialog.message}
-  type="warning"
+title={confirmDialog.title}
+    message={confirmDialog.message}
+    type={confirmDialog.type}
   />
   </div>
   );

@@ -28,38 +28,24 @@ const useAdmin = () => {
 
   //  Clubs
   const fetchClubs = useCallback(async () => {
-  try {
+  // Rethrows instead of swallowing. It used to catch and log only, so a failed
+  // load left the caller with a resolved promise and the page rendered an empty
+  // club list as though that were the real answer.
   await dispatch(fetchAdminClubs()).unwrap();
-  } catch (error) {
-  console.error("Failed to fetch clubs:", error);
-  }
   }, [dispatch]);
 
   //  Approve Club
+  //  Refetches, and this was missing. rejectClub below did refetch, so approving
+  //  left the card showing "Pending" with its Approve and Reject buttons still
+  //  live until the page was reloaded, while rejecting updated immediately.
   const approveClub = useCallback(
-  async (clubId) => {
-  try {
-  await dispatch(adminApproveClub(clubId)).unwrap();
-  // Refresh the list after approval
-  } catch (error) {
-  console.error("Failed to approve club:", error);
-  throw error;
-  }
-  },
-  [dispatch],
+  (clubId) => dispatch(adminApproveClub(clubId)).unwrap().then(fetchClubs),
+  [dispatch, fetchClubs],
   );
 
-  //  Reject Club - Add this endpoint in backend
+  //  Reject Club
   const rejectClub = useCallback(
-  async (clubId) => {
-  try {
-  await dispatch(rejectClubAdmin(clubId)).unwrap();
-  await fetchClubs(); // Refresh the list after rejection
-  } catch (error) {
-  console.error("Failed to reject club:", error);
-  throw error;
-  }
-  },
+  (clubId) => dispatch(rejectClubAdmin(clubId)).unwrap().then(fetchClubs),
   [dispatch, fetchClubs],
   );
 
