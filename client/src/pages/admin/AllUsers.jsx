@@ -429,7 +429,9 @@ const AdminAllUsers = () => {
         }
       >
         {activeUser ? (
-          <div className="space-y-5">
+          /* A description list, because these are label/value pairs and screen
+             readers announce each term together with its definition. */
+          <dl className="space-y-5">
             <DetailRow label="Role">
               <RoleBadge role={roleOf(activeUser)} />
             </DetailRow>
@@ -490,7 +492,7 @@ const AdminAllUsers = () => {
                 {activeUser.club.name}
               </DetailRow>
             ) : null}
-          </div>
+          </dl>
         ) : null}
       </DetailDialog>
 
