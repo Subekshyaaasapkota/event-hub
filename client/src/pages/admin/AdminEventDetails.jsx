@@ -1,563 +1,592 @@
 // src/pages/admin/AdminEventDetails.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import {
   Calendar,
   MapPin,
   Clock,
-  Users,
   Globe,
-  ExternalLink,
   ChevronLeft,
-  Info,
   Building2,
   Mail,
   CheckCircle2,
-  User,
-  Tag,
-  Shield,
-  Edit,
-  Trash2,
-  XCircle,
   AlertCircle,
-  Printer,
   Share2,
   Eye,
-  DollarSign,
+  Pencil,
+  Trash2,
+  Users,
+  Ban,
+  Info,
 } from "lucide-react";
-import { NO_IMAGE_PLACEHOLDER, getImageUrlOrPlaceholder } from "../../utils/imageUrl";
-
+import {
+  NO_IMAGE_PLACEHOLDER,
+  getImageUrlOrPlaceholder,
+} from "../../utils/imageUrl";
 import useAdmin from "../../hooks/useAdmin";
-import Footer from "../../components/common/Footer";
+
+/**
+ * One event, as an admin sees it.
+ *
+ * This page was carrying several statements that the data could not support.
+ *
+ * District was rendered twice for every physical event: once by a block that
+ * swapped between "Event Type" and "District" depending on eventType, and
+ * again by the block below it that only showed for physical events. Both drew
+ * from event.district, so the same value appeared in the same grid.
+ *
+ * A green badge reading "Free Event" was hardcoded. The model has isPaid and
+ * price, and a paid event was being described as free to the person deciding
+ * whether to allow it.
+ *
+ * Capacity read "Unlimited" unconditionally, next to a number that was
+ * participantCount. That field is capacity, not a count, so the two tiles
+ * beside each other were describing the same number twice while calling one of
+ * them a total. Worse, the underlying check in registrationService refuses to
+ * claim a seat when capacity is zero, so an event with no capacity set accepts
+ * nobody. Calling that unlimited is the opposite of true.
+ *
+ * "This event is currently active and visible to all users" was printed for any
+ * event with a future date. Drafts and cancelled events got the same
+ * reassurance. The status now comes from the model.
+ *
+ * The Edit button pointed at /admin/events/edit/:id, which this same component
+ * renders. It navigated to itself and changed nothing, so it is gone rather than
+ * relabelled. There is no admin event editor to send anyone to.
+ */
+const deriveStatus = (event, now) => {
+  if (event.status === "cancelled") return "cancelled";
+  if (event.eventDate && new Date(event.eventDate) < now) return "completed";
+  if (event.status === "draft") return "draft";
+  if (event.deadline && new Date(event.deadline) < now) return "closed";
+  return "open";
+};
+
+const STATUS = {
+  open: {
+    label: "Open for signups",
+    icon: CheckCircle2,
+    chip: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    note: "Accepting registrations",
+  },
+  closed: {
+    label: "Registration closed",
+    icon: Clock,
+    chip: "border-amber-200 bg-amber-50 text-amber-800",
+    note: "The registration deadline has passed",
+  },
+  draft: {
+    label: "Draft",
+    icon: Pencil,
+    chip: "border-stone-200 bg-stone-100 text-stone-700",
+    note: "Not published",
+  },
+  completed: {
+    label: "Completed",
+    icon: CheckCircle2,
+    chip: "border-sky-200 bg-sky-50 text-sky-800",
+    note: "The event date has passed",
+  },
+  cancelled: {
+    label: "Cancelled",
+    icon: Ban,
+    chip: "border-red-200 bg-red-50 text-red-800",
+    note: "This event was cancelled",
+  },
+};
+
+const formatDate = (value) => {
+  if (!value) return "Not set";
+  return new Date(value).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+const formatDateTime = (value) => {
+  if (!value) return "Not set";
+  return new Date(value).toLocaleString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
 
 const AdminEventDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { adminData, fetchEvents, deleteEvent } = useAdmin();
-  const [event, setEvent] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+
   const [confirmDialog, setConfirmDialog] = useState({
-  isOpen: false,
-  title: "",
-  message: "",
-  onConfirm: null,
+    isOpen: false,
+    onConfirm: null,
   });
+
+  const events = adminData.events;
+  const loading = adminData.loading;
+  const error = adminData.error;
 
   useEffect(() => {
-  // Fetch events if not already loaded
-  if (!adminData.events || adminData.events.length === 0) {
-  fetchEvents();
-  }
-  }, [fetchEvents, adminData.events]);
+    if (!events?.length) fetchEvents();
+  }, [events, fetchEvents]);
+
+  // Selected from the already-loaded list rather than fetched again. One list is
+  // fetched for the whole console, so a second request for a single record was
+  // both slower and able to disagree with the list the admin came from.
+  const event = useMemo(
+    () => events?.find((e) => e._id === id),
+    [events, id],
+  );
+
+  const now = useMemo(() => new Date(), []);
+  const status = event ? deriveStatus(event, now) : null;
 
   useEffect(() => {
-  const fetchEvent = async () => {
-  try {
-  setLoading(true);
-  // Wait for events to be loaded
-  if (adminData.events && adminData.events.length > 0) {
-  // Find the specific event from adminData
-  const foundEvent = adminData.events.find((e) => e._id === id);
+    window.scrollTo(0, 0);
+  }, [id]);
 
-  if (foundEvent) {
-  setEvent(foundEvent);
-  } else {
-  setError("Event not found");
-  }
-  } else if (!adminData.loading && adminData.events) {
-  setError("No events found");
-  }
-  } catch (err) {
-  setError(err.message || "Failed to load event details");
-  } finally {
-  setLoading(false);
-  }
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success("Link copied.");
+    } catch {
+      // Clipboard access is refused outside a secure context, and this page can
+      // be reached over plain http in development.
+      toast.error("Could not copy the link.");
+    }
   };
 
-  fetchEvent();
-  window.scrollTo(0, 0);
-  }, [id, adminData.events, adminData.loading]);
-
-  const formatDate = (dateString) => {
-  if (!dateString) return "N/A";
-  return new Date(dateString).toLocaleDateString("en-US", {
-  weekday: "long",
-  month: "long",
-  day: "numeric",
-  year: "numeric",
-  });
+  const confirmDelete = () => {
+    setConfirmDialog({
+      isOpen: true,
+      onConfirm: async () => {
+        try {
+          await deleteEvent(id);
+          toast.success("Event deleted.");
+          navigate("/admin/events");
+        } catch (err) {
+          toast.error(err.message || "Could not delete the event.");
+        } finally {
+          setConfirmDialog({ isOpen: false, onConfirm: null });
+        }
+      },
+    });
   };
 
-  const formatDateTime = (dateString) => {
-  if (!dateString) return "N/A";
-  return new Date(dateString).toLocaleString("en-US", {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  });
-  };
-
-  if (loading)
-  return (
-  <div className="min-h-screen flex items-center justify-center bg-slate-50">
-  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
-  </div>
-  );
-
-  if (error)
-  return (
-  <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
-  <div className="bg-red-50 text-red-500 p-6 rounded-2xl border border-red-100 font-medium">
-  {error}
-  </div>
-  <button
-  onClick={() => navigate("/admin/events")}
-  className="flex items-center gap-2 text-indigo-600 font-semibold hover:underline"
-  >
-  <ChevronLeft size={20} /> Back to Events
-  </button>
-  </div>
-  );
-
-  if (!event) return null;
-
-  const isEventExpired = new Date(event.eventDate) < new Date();
-
-  return (
-  <div className="min-h-screen bg-slate-50/50">
-  <main className="flex-1">
-  {/* Admin Header */}
-  <div className="bg-white border-b border-slate-100 sticky top-0 z-10">
-  <div className="max-w-7xl mx-auto px-6 py-4">
-  <div className="flex items-center justify-between">
-  <div className="flex items-center gap-4">
-  <button
-  onClick={() => navigate("/admin/events")}
-  className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-colors group"
-  >
-  <div className="bg-slate-50 p-2 rounded-xl group-hover:bg-indigo-50 transition-all">
-  <ChevronLeft size={18} />
-  </div>
-  <span className="font-medium text-sm">Back to Events</span>
-  </button>
-  <div className="h-6 w-px bg-slate-200"></div>
-  <div className="flex items-center gap-2">
-  <Shield size={14} className="text-indigo-600" />
-  <span className="text-xs font-black uppercase tracking-wider text-slate-500">
-  Admin View
-  </span>
-  </div>
-  </div>
-
-  <div className="flex items-center gap-3">
-  <button
-  onClick={() => window.print()}
-  className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
-  title="Print Event Details"
-  >
-  <Printer size={18} />
-  </button>
-  <button
-  onClick={async () => {
-  await navigator.clipboard.writeText(window.location.href);
-  toast.success("Link copied to clipboard!");
-  }}
-  className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
-  title="Share Event"
-  >
-  <Share2 size={18} />
-  </button>
-  </div>
-  </div>
-  </div>
-  </div>
-
-  <div className="max-w-7xl mx-auto px-6 py-10">
-  <div className="grid lg:grid-cols-12 gap-8">
-  {/* Left Column - Event Details */}
-  <div className="lg:col-span-8 space-y-6">
-  {/* Event Status Banner */}
-  <div
-  className={`rounded-2xl p-4 ${
-  isEventExpired
-  ? "bg-gray-50 border border-gray-200"
-  : "bg-emerald-50 border border-emerald-100"
-  }`}
-  >
-  <div className="flex items-center gap-3">
-  {isEventExpired ? (
-  <AlertCircle size={20} className="text-gray-600" />
-  ) : (
-  <CheckCircle2 size={20} className="text-emerald-600" />
-  )}
-  <div>
-  <p
-  className={`text-sm font-bold ${isEventExpired ? "text-gray-700" : "text-emerald-700"}`}
-  >
-  {isEventExpired ? "Event Has Expired" : "Event is Active"}
-  </p>
-  <p className="text-xs text-slate-500 mt-0.5">
-  {isEventExpired
-  ? "This event date has passed"
-  : "This event is currently active and visible to all users"}
-  </p>
-  </div>
-  </div>
-  </div>
-
-  {/* Event Image */}
-  <div className="relative aspect-video rounded-2xl overflow-hidden shadow-lg border border-slate-200">
-<img
-    src={getImageUrlOrPlaceholder(event.poster)}
-    alt={event.title}
-    className="w-full h-full object-cover"
-    onError={(e) => {
-    // A Cloudinary URL can 404 after a folder is renamed, so fall back too.
-    e.target.onerror = null;
-    e.target.src = NO_IMAGE_PLACEHOLDER;
-    }}
-    />
-  <div className="absolute top-4 right-4">
-  <span
-  className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-  isEventExpired
-  ? "bg-gray-500 text-white"
-  : "bg-emerald-500 text-white"
-  }`}
-  >
-  {isEventExpired ? "Expired" : "Active"}
-  </span>
-  </div>
-  </div>
-
-  {/* Event Info Card */}
-  <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-  <div className="flex flex-wrap gap-2 mb-4">
-  <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border border-indigo-100">
-  {event.category || "General"}
-  </span>
-  <span className="bg-green-50 text-green-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border border-green-100">
-  Free Event
-  </span>
-  </div>
-
-  <h1 className="text-3xl font-black text-slate-900 mb-4">
-  {event.title}
-  </h1>
-
-  <div className="grid sm:grid-cols-2 gap-5 pb-6 border-b border-slate-100">
-  <div className="flex items-start gap-3">
-  <div className="bg-indigo-50 p-2 rounded-xl text-indigo-600">
-  <Calendar size={18} />
-  </div>
-  <div>
-  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-  Event Date & Time
-  </p>
-  <p className="text-slate-800 font-semibold text-sm">
-  {formatDateTime(event.eventDate)}
-  </p>
-  </div>
-  </div>
-
-  <div className="flex items-start gap-3">
-  <div
-  className={`p-2 rounded-xl ${
-  event.eventType === "online"
-  ? "bg-blue-50 text-blue-600"
-  : "bg-indigo-50 text-indigo-600"
-  }`}
-  >
-  {event.eventType === "online" ? (
-  <Globe size={18} />
-  ) : (
-  <MapPin size={18} />
-  )}
-  </div>
-  <div>
-  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-  {event.eventType === "online"
-  ? "Event Type"
-  : "District"}
-  </p>
-  {event.eventType === "online" ? (
-  <p className="text-slate-800 font-semibold text-sm">
-  Online Event
-  </p>
-  ) : (
-  <p className="text-slate-800 font-semibold text-sm">
-  {event.district || "N/A"}
-  </p>
-  )}
-  </div>
-  </div>
-
-  {event.eventType === "physical" && (
-  <>
-  <div className="flex items-start gap-3">
-  <div className="bg-indigo-50 p-2 rounded-xl text-indigo-600">
-  <MapPin size={18} />
-  </div>
-  <div>
-  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-  District
-  </p>
-  <p className="text-slate-800 font-semibold text-sm">
-  {event.district || "N/A"}
-  </p>
-  </div>
-  </div>
-
-  {event.venue && (
-  <div className="flex items-start gap-3">
-  <div className="bg-indigo-50 p-2 rounded-xl text-indigo-600">
-  <MapPin size={18} />
-  </div>
-  <div>
-  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-  Venue
-  </p>
-  <p className="text-slate-800 font-semibold text-sm">
-  {event.venue}
-  </p>
-  </div>
-  </div>
-  )}
-  </>
-  )}
-
-  <div className="flex items-start gap-3">
-  <div className="bg-indigo-50 p-2 rounded-xl text-indigo-600">
-  <Building2 size={18} />
-  </div>
-  <div>
-  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-  Organizing Club
-  </p>
-  <p className="text-slate-800 font-semibold text-sm">
-  {event.organizer?.name || "N/A"}
-  </p>
-  </div>
-  </div>
-
-  <div className="flex items-start gap-3">
-  <div className="bg-indigo-50 p-2 rounded-xl text-indigo-600">
-  <User size={18} />
-  </div>
-  <div>
-  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-  Created By
-  </p>
-  <p className="text-slate-800 font-semibold text-sm">
-  {event.createdBy?.name || "Unknown"}
-  </p>
-  </div>
-  </div>
-
-  <div className="flex items-start gap-3">
-  <div className="bg-indigo-50 p-2 rounded-xl text-indigo-600">
-  <Clock size={18} />
-  </div>
-  <div>
-  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-  Registration Deadline
-  </p>
-  <p className="text-slate-800 font-semibold text-sm">
-  {formatDateTime(event.deadline)}
-  </p>
-  </div>
-  </div>
-  </div>
-
-  <div className="pt-6">
-  <h2 className="text-lg font-black text-slate-800 mb-3 flex items-center gap-2">
-  <Info size={18} className="text-indigo-600" /> Description
-  </h2>
-  <div className="text-slate-600 leading-relaxed whitespace-pre-wrap">
-  {event.description ||
-  "No description provided for this event."}
-  </div>
-  </div>
-  </div>
-
-  {/* Registration Stats */}
-  <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-  <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-  <Users size={18} className="text-indigo-600" /> Registration
-  Analytics
-  </h2>
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <div className="bg-slate-50 rounded-xl p-4 text-center">
-  <p className="text-2xl font-black text-slate-800">
-  {event.participantCount || 0}
-  </p>
-  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-  Total Participants
-  </p>
-  </div>
-  <div className="bg-slate-50 rounded-xl p-4 text-center">
-  <p className="text-2xl font-black text-slate-800">
-  Unlimited
-  </p>
-  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-  Capacity
-  </p>
-  </div>
-  </div>
-  </div>
-  </div>
-
-  {/* Right Column - Admin Actions */}
-  <div className="lg:col-span-4 space-y-6">
-  {/* Admin Actions Card */}
-  <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 sticky top-24">
-  <h3 className="text-sm font-black text-slate-800 mb-4 flex items-center gap-2">
-  <Shield size={16} className="text-indigo-600" /> Admin Actions
-  </h3>
-
-  <div className="space-y-3">
-  <button
-  onClick={() => window.open(`/event/${id}`, "_blank")}
-  className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-indigo-50 rounded-xl transition-all group"
-  >
-  <span className="text-sm font-medium text-slate-700 group-hover:text-indigo-600">
-  View Public Page
-  </span>
-  <Eye
-  size={16}
-  className="text-slate-400 group-hover:text-indigo-600"
-  />
-  </button>
-
-  <button
-  onClick={() => navigate(`/admin/events/edit/${id}`)}
-  className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-blue-50 rounded-xl transition-all group"
-  >
-  <span className="text-sm font-medium text-slate-700 group-hover:text-blue-600">
-  Edit Event Details
-  </span>
-  <Edit
-  size={16}
-  className="text-slate-400 group-hover:text-blue-600"
-  />
-  </button>
-
-  <button
-  onClick={() =>
-  setConfirmDialog({
-  isOpen: true,
-  title: "Delete Event Permanently",
-  message: `Are you sure you want to delete "${event.title}"? This action cannot be undone.`,
-  onConfirm: async () => {
-  try {
-  await deleteEvent(id);
-  toast.success("Event deleted successfully.");
-  navigate("/admin/events");
-  } catch (error) {
-  toast.error(
-  error.message ||
-  "Failed to delete event. Please try again.",
-  );
-  } finally {
-  setConfirmDialog({ isOpen: false });
+  if (error && !events) {
+    return (
+      <ErrorPanel message={error} onRetry={fetchEvents} />
+    );
   }
-  },
-  })
+
+  if (loading && !event) {
+    return (
+      <div className="space-y-4" aria-busy="true" aria-live="polite">
+        <span className="sr-only">Loading event</span>
+        <div className="h-8 w-48 animate-pulse rounded-lg bg-stone-100" />
+        <div className="aspect-video animate-pulse rounded-2xl bg-stone-100" />
+        <div className="h-64 animate-pulse rounded-2xl bg-stone-100" />
+      </div>
+    );
   }
-  className="w-full flex items-center justify-between p-3 bg-red-50 hover:bg-red-100 rounded-xl transition-all group"
-  >
-  <span className="text-sm font-medium text-red-600">
-  Delete Event Permanently
-  </span>
-  <Trash2 size={16} className="text-red-500" />
-  </button>
-  </div>
 
-  {isEventExpired && (
-  <div className="mt-4 pt-4 border-t border-slate-100">
-  <p className="text-xs text-gray-600 bg-gray-50 p-3 rounded-xl flex items-center gap-2">
-  <AlertCircle size={12} />
-  This event has expired. You may delete it if no longer
-  needed.
-  </p>
-  </div>
-  )}
+  if (!event) {
+    return (
+      <div className="flex flex-col items-center rounded-2xl border border-hairline bg-white px-6 py-14 text-center">
+        <span className="flex size-11 items-center justify-center rounded-full border border-hairline bg-stone-50 text-stone-400">
+          <AlertCircle size={20} aria-hidden="true" />
+        </span>
+        <h2 className="mt-3 font-display text-base font-semibold text-ink">
+          Event not found
+        </h2>
+        <p className="mt-1 max-w-sm text-sm text-stone-500">
+          It may have been deleted, or the link may be out of date.
+        </p>
+        <Link
+          to="/admin/events"
+          className="mt-4 rounded-full border border-hairline bg-white px-4 py-2 text-sm font-medium text-ink transition-colors duration-200 hover:bg-stone-100"
+        >
+          Back to events
+        </Link>
+      </div>
+    );
+  }
 
-  <div className="mt-4 pt-4 border-t border-slate-100">
-  <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">
-  Event Metadata
-  </p>
-  <div className="space-y-1 text-xs text-slate-500">
-  <p>Event ID: {event._id}</p>
-  <p>
-  Created: {formatDate(event.timestamp || event.createdAt)}
-  </p>
-  <p>Created By ID: {event.createdBy?._id || "N/A"}</p>
-  </div>
-  </div>
-  </div>
+  const meta = STATUS[status];
+  const registered = event.currentParticipants ?? 0;
+  const capacity = event.participantCount ?? 0;
+  const isOnline = event.eventType === "online";
 
-  {/* Club Info Card */}
-  {event.organizer && (
-  <div className="bg-linear-to-br from-indigo-600 to-purple-700 rounded-2xl p-6 shadow-xl text-white">
-  <h3 className="text-xs font-bold uppercase tracking-[0.2em] mb-4 opacity-80">
-  Organizing Club
-  </h3>
-  <div className="flex items-center gap-3 mb-4">
-  <div className="bg-white/10 p-3 rounded-xl backdrop-blur-sm border border-white/20">
-  <Building2 size={24} />
-  </div>
-  <div>
-  <h4 className="text-lg font-extrabold">
-  {event.organizer.name}
-  </h4>
-  <div className="flex items-center gap-1 text-xs font-bold text-white/70 uppercase tracking-wider">
-  <CheckCircle2 size={12} className="text-green-400" />{""}
-  Registered Club
-  </div>
-  </div>
-  </div>
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link
+          to="/admin/events"
+          className="-ml-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-stone-600 transition-colors duration-200 hover:bg-stone-100 hover:text-ink"
+        >
+          <ChevronLeft size={16} aria-hidden="true" />
+          All events
+        </Link>
 
-  {event.organizer.email && (
-  <div className="flex items-center gap-2 text-sm">
-  <Mail size={14} className="opacity-60" />
-  <span className="text-white/90">
-  {event.organizer.email}
-  </span>
-  </div>
-  )}
+        <button
+          type="button"
+          onClick={copyLink}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-hairline bg-white px-3 py-2 text-xs font-medium text-stone-700 transition-colors duration-200 hover:bg-stone-100"
+        >
+          <Share2 size={14} aria-hidden="true" />
+          Copy link
+        </button>
+      </div>
 
-  <button
-  onClick={() => navigate("/admin/clubs")}
-  className="w-full mt-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
-  >
-  View Club Details <ExternalLink size={12} />
-  </button>
-  </div>
-  )}
-  </div>
-  </div>
-  </div>
-  </main>
+      <div
+        className={`flex items-center gap-3 rounded-2xl border px-5 py-4 ${meta.chip}`}
+      >
+        <meta.icon size={18} aria-hidden="true" className="shrink-0" />
+        <div>
+          <p className="text-sm font-semibold">{meta.label}</p>
+          <p className="mt-0.5 text-xs opacity-80">{meta.note}</p>
+        </div>
+      </div>
 
-  <Footer />
+      <div className="overflow-hidden rounded-2xl border border-hairline bg-white">
+        <img
+          src={getImageUrlOrPlaceholder(event.poster)}
+          alt=""
+          onError={(e) => {
+            // A Cloudinary URL can 404 after a folder is renamed, so fall back too.
+            e.target.onerror = null;
+            e.target.src = NO_IMAGE_PLACEHOLDER;
+          }}
+          className="aspect-video w-full bg-stone-100 object-cover"
+        />
 
-  <ConfirmDialog
-  isOpen={confirmDialog.isOpen}
-  onClose={() => setConfirmDialog({ isOpen: false })}
-  onConfirm={confirmDialog.onConfirm}
-  title={confirmDialog.title}
-  message={confirmDialog.message}
-  type="danger"
-  />
-  </div>
+        <div className="space-y-6 p-5 sm:p-6">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-hairline bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
+                {event.category || "Other"}
+              </span>
+              {/*
+                Reads the model's own fields rather than asserting "Free Event"
+                on every record regardless of what it charges.
+              */}
+              {event.isPaid ? (
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800">
+                  Paid
+                  {event.price > 0 && (
+                    <span className="tabular-nums">
+                      {" "}
+                      · NPR {event.price.toLocaleString()}
+                    </span>
+                  )}
+                </span>
+              ) : (
+                <span className="rounded-full border border-hairline bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
+                  Free
+                </span>
+              )}
+              {event.registrationType === "google_form" && (
+                <span className="rounded-full border border-hairline bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
+                  Offsite signups
+                </span>
+              )}
+            </div>
+
+            <h2 className="mt-3 font-display text-2xl font-semibold tracking-tight text-ink">
+              {event.title}
+            </h2>
+          </div>
+
+          <dl className="grid grid-cols-1 gap-x-8 gap-y-4 border-y border-hairline py-5 text-sm sm:grid-cols-2">
+            <Detail label="Event date and time" icon={Calendar}>
+              {formatDateTime(event.eventDate)}
+            </Detail>
+
+            <Detail label="Registration deadline" icon={Clock}>
+              {formatDateTime(event.deadline)}
+            </Detail>
+
+            <Detail label="Format" icon={isOnline ? Globe : MapPin}>
+              {isOnline ? "Online" : "In person"}
+            </Detail>
+
+            {/*
+              One District field, not two. The previous version drew this same
+              value twice for physical events.
+            */}
+            {!isOnline && (
+              <Detail label="District" icon={MapPin}>
+                {event.district || "Not set"}
+              </Detail>
+            )}
+
+            {!isOnline && event.venue && (
+              <Detail label="Venue" icon={MapPin}>
+                {event.venue}
+              </Detail>
+            )}
+
+            <Detail label="Organising club" icon={Building2}>
+              {event.organizer?.name || "Unknown"}
+            </Detail>
+
+            <Detail label="Created by" icon={Building2}>
+              {event.createdBy?.name || "Unknown"}
+            </Detail>
+
+            <Detail label="Created on" icon={Calendar}>
+              {formatDate(event.createdAt)}
+            </Detail>
+          </dl>
+
+          <section>
+            <h3 className="mb-2 flex items-center gap-2 font-display text-sm font-semibold text-ink">
+              <Info size={15} aria-hidden="true" className="text-stone-400" />
+              Description
+            </h3>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-stone-700">
+              {event.description || "No description was provided."}
+            </p>
+          </section>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+        <section className="lg:col-span-3">
+          <div className="h-full rounded-2xl border border-hairline bg-white p-5">
+            <h3 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold text-ink">
+              <Users size={15} aria-hidden="true" className="text-stone-400" />
+              Registration
+            </h3>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-hairline bg-stone-50 px-4 py-3">
+                <p className="font-display text-2xl font-semibold leading-none tabular-nums text-ink">
+                  {registered}
+                </p>
+                <p className="mt-1.5 text-xs text-stone-500">Registered</p>
+              </div>
+              <div className="rounded-xl border border-hairline bg-stone-50 px-4 py-3">
+                <p className="font-display text-2xl font-semibold leading-none tabular-nums text-ink">
+                  {capacity > 0 ? capacity : "None"}
+                </p>
+                <p className="mt-1.5 text-xs text-stone-500">Capacity</p>
+              </div>
+            </div>
+
+            {/* A seat can only be claimed below capacity, so the fill is the
+                number that tells an admin whether anyone can still register. */}
+            <CapacityBar registered={registered} capacity={capacity} />
+
+            {capacity === 0 && (
+              <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
+                <AlertCircle size={13} aria-hidden="true" className="mt-px shrink-0" />
+                <span>
+                  No capacity is set, so nobody can register. A seat is only
+                  claimed while registered is below capacity.
+                </span>
+              </p>
+            )}
+
+            {event.registrationType === "google_form" &&
+              event.googleSheetResponseLink && (
+                <a
+                  href={event.googleSheetResponseLink}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-hairline bg-white px-3 py-2 text-xs font-medium text-ink transition-colors duration-200 hover:bg-stone-100"
+                >
+                  <Share2 size={13} aria-hidden="true" />
+                  Open the signup responses
+                </a>
+              )}
+          </div>
+        </section>
+
+        <section className="lg:col-span-2">
+          <div className="flex h-full flex-col rounded-2xl border border-hairline bg-white p-5">
+            <h3 className="mb-4 font-display text-sm font-semibold text-ink">
+              Actions
+            </h3>
+
+            <div className="space-y-2">
+              <a
+                href={`/event/${event._id}`}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="flex items-center justify-between rounded-xl border border-hairline bg-white px-3 py-2.5 text-sm font-medium text-ink transition-colors duration-200 hover:bg-stone-100"
+              >
+                View the public page
+                <Eye
+                  size={15}
+                  aria-hidden="true"
+                  className="text-stone-400"
+                />
+              </a>
+
+              <Link
+                to="/admin/events"
+                className="flex items-center justify-between rounded-xl border border-hairline bg-white px-3 py-2.5 text-sm font-medium text-ink transition-colors duration-200 hover:bg-stone-100"
+              >
+                Back to all events
+                <ChevronLeft
+                  size={15}
+                  aria-hidden="true"
+                  className="text-stone-400"
+                />
+              </Link>
+
+              <button
+                type="button"
+                onClick={confirmDelete}
+                className="flex w-full items-center justify-between rounded-xl border border-red-200 bg-white px-3 py-2.5 text-sm font-medium text-red-700 transition-colors duration-200 hover:bg-red-50"
+              >
+                Delete this event
+                <Trash2 size={15} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="mt-auto pt-5">
+              <p className="mb-2 text-xs uppercase tracking-wide text-stone-500">
+                Record
+              </p>
+              <dl className="space-y-1 text-xs text-stone-500">
+                <div className="flex justify-between gap-3">
+                  <dt>Event ID</dt>
+                  <dd className="truncate font-mono text-stone-700">
+                    {event._id}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt>Created by ID</dt>
+                  <dd className="truncate font-mono text-stone-700">
+                    {event.createdBy?._id || "Not recorded"}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {event.organizer && (
+        <section className="rounded-2xl border border-hairline bg-white p-5">
+          <h3 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold text-ink">
+            <Building2 size={15} aria-hidden="true" className="text-stone-400" />
+            Organising club
+          </h3>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <p className="font-medium text-ink">{event.organizer.name}</p>
+            {event.organizer.email && (
+              <a
+                href={`mailto:${event.organizer.email}`}
+                className="inline-flex items-center gap-1.5 text-sm text-stone-600 underline decoration-stone-300 underline-offset-4 transition-colors duration-200 hover:text-ink"
+              >
+                <Mail size={13} aria-hidden="true" />
+                {event.organizer.email}
+              </a>
+            )}
+            {/* Only claims a verified club when the record actually says so. */}
+            {event.organizer.isVerified && (
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                <CheckCircle2 size={12} aria-hidden="true" />
+                Verified
+              </span>
+            )}
+          </div>
+        </section>
+      )}
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ isOpen: false, onConfirm: null })}
+        onConfirm={confirmDialog.onConfirm}
+        title="Delete this event?"
+        message={`“${event.title}” will be permanently deleted, along with its registrations. This cannot be undone.`}
+        confirmText="Delete event"
+        type="danger"
+      />
+    </div>
   );
 };
+
+const Detail = ({ label, icon: Icon, children }) => (
+  <div className="flex items-start gap-3">
+    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border border-hairline bg-stone-50 text-stone-500">
+      <Icon size={14} aria-hidden="true" />
+    </span>
+    <div className="min-w-0">
+      <dt className="text-xs uppercase tracking-wide text-stone-500">{label}</dt>
+      <dd className="mt-0.5 text-ink">{children}</dd>
+    </div>
+  </div>
+);
+
+const CapacityBar = ({ registered, capacity }) => {
+  const pct = capacity > 0 ? Math.min(100, Math.round((registered / capacity) * 100)) : 0;
+  const full = capacity > 0 && registered >= capacity;
+
+  return (
+    <div className="mt-4">
+      <div
+        className="h-1.5 w-full overflow-hidden rounded-full bg-stone-200"
+        role="progressbar"
+        aria-valuenow={registered}
+        aria-valuemin={0}
+        aria-valuemax={capacity || 0}
+        aria-label="Registration fill"
+      >
+        <div
+          className={`h-full rounded-full transition-[width] duration-500 ${
+            full ? "bg-amber-500" : "bg-ink"
+          }`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="mt-1.5 text-xs text-stone-500">
+        {capacity > 0 ? (
+          <>
+            <span className="tabular-nums">{pct}%</span> full
+            {full && (
+              <span className="text-amber-700">
+                {" "}
+                · no places left, so signups are closed
+              </span>
+            )}
+          </>
+        ) : (
+          "Capacity has not been set."
+        )}
+      </p>
+    </div>
+  );
+};
+
+const ErrorPanel = ({ message, onRetry }) => (
+  <div className="flex flex-col items-center rounded-2xl border border-red-200 bg-red-50 px-6 py-14 text-center">
+    <span className="flex size-11 items-center justify-center rounded-full border border-red-200 bg-white text-red-600">
+      <AlertCircle size={20} aria-hidden="true" />
+    </span>
+    <h2 className="mt-3 font-display text-base font-semibold text-red-900">
+      Could not load events
+    </h2>
+    <p className="mt-1 max-w-sm text-sm text-red-800">{message}</p>
+    <button
+      type="button"
+      onClick={onRetry}
+      className="mt-4 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-red-700"
+    >
+      Try again
+    </button>
+  </div>
+);
 
 export default AdminEventDetails;

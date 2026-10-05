@@ -44,6 +44,31 @@ body {
   box-shadow: 0 0 0 4px var(--color-paper);
 }
 
+/*
+ * Pointer cursor.
+ *
+ * The browser default for <button> is the plain arrow, so every button in this
+ * app read as a static label until it was hovered, and nothing in the codebase
+ * was setting cursor: pointer to correct for it. Anchors with an href already
+ * looked clickable, which made the inconsistency worse rather than invisible.
+ *
+ * Set once here rather than as a class on each control, because a class is only
+ * on the components somebody remembered to update, and the ones that were
+ * missed are exactly the buttons that look least like buttons.
+ *
+ * Disabled controls take not-allowed instead, so a control that will refuse the
+ * click says so before the click rather than after it.
+ */
+:where(button, [role="button"], summary),
+:where(a[href], label[for]) {
+  cursor: pointer;
+}
+
+:where(button, [role="button"], summary):disabled,
+:where(button, [role="button"])[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 /* Anchor jumps should not snap, but must not move the page for reduced motion. */
 html {
   scroll-behavior: smooth;
