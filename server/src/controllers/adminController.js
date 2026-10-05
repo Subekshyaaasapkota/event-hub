@@ -21,30 +21,26 @@ const deleteUser = async (req, res) => {
   }
 
   try {
-    const result = await adminService.deleteUser(id);
+    // req.user is the JWT payload from auth.js, which is the allowlist built by
+    // authService.login. Its primary key is `id`, not `_id`: authService maps
+    // user._id to id. Reading req.user._id here returned undefined, so a
+    // self-deletion guard written against it would never have fired.
+    const result = await adminService.deleteUser(id, req.user?.id);
     res.status(200).json(result);
   } catch (error) {
-    // The service refuses deliberately in several cases: a user with
-    // registrations, a user who still owns events or clubs, and the last admin.
-    // Those are conflicts, not server faults, and they arrived here as 500. The
-    // client treats a 500 as an unexpected failure, so the admin saw a red
-    // "something broke" message instead of the actual reason and had no way to
-    // tell it apart from a genuine outage. Refusals carry a 409 so the console
-    // can show what to do about it.
-    const isRefusal =
-      error.message?.includes("cannot be deleted") ||
-      error.message?.includes("still owns") ||
-      error.message?.includes("only admin account");
-
-    if (isRefusal) {
-      return res.status(409).json({ message: error.message });
-    }
-    if (error.message === "User not found") {
-      return res.status(404).json({ message: error.message });
+    // Refusals (a user with registrations, a user who still owns events or
+    // clubs, the last admin, deleting yourself) are thrown as HttpError with the
+    // status they should be reported as. This used to decide between 409 and 500
+    // by matching on substrings of the message, so rewording a sentence or
+    // adding a refusal turned it back into a 500 and the admin saw "something
+    // broke" for a deliberate decision. Trust error.status instead; anything
+    // without one really is an unexpected fault.
+    if (error.status) {
+      return res.status(error.status).json({ message: error.message });
     }
 
     console.error("Error in deleteUser Controller:", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Could not delete this user." });
   }
 };
 

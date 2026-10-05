@@ -1,6 +1,6 @@
 // src/AppRoutes.jsx
 import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useParams } from "react-router-dom";
 
 import ROLES from "./roles.js";
 import ProtectedRoute from "../components/protected/ProtectedRoute";
@@ -48,6 +48,19 @@ import AdminRegistrations from "../pages/admin/AdminRegistrations";
 import AdminHome from "../pages/admin/AdminHome.jsx";
 import MainLayout from "../components/layout/MainLayout.jsx";
 import ScrollToTop from "./ScrollToTop.jsx";
+
+/**
+ * Sends the old /admin/events/edit/:id to the page that actually exists.
+ *
+ * A wrapper rather than <Navigate to="/admin/event/:id"> because the id has to
+ * be read out of the matched params and put into the string. Writing the param
+ * in the path hands over the literal text "/admin/event/:id" and lands on a 404
+ * for the id, which is a more confusing failure than the one being fixed.
+ */
+const AdminEventEditRedirect = () => {
+  const { id } = useParams();
+  return <Navigate to={`/admin/event/${id}`} replace />;
+};
 
 const AppRoutes = () => {
 return (
@@ -178,8 +191,18 @@ return (
   <Route index element={<Navigate to="/admin/dashboard" replace />} />
   <Route path="dashboard" element={<AdminDashboard />} />
   <Route path="events" element={<AdminManageEvents />} />
-  <Route path="event/:id" element={<AdminEventDetails />} />
-  <Route path="events/edit/:id" element={<AdminEventDetails />} />
+<Route path="event/:id" element={<AdminEventDetails />} />
+    {/*  This rendered AdminEventDetails, which is read-only, so an /edit URL
+        promised editing and delivered a view with no editing in it. There is no
+        admin edit form and nothing links here, but the route was left behind.
+        Redirected to the real page instead of deleted so an old bookmark lands
+        somewhere useful rather than on a 404. eventsController.updateEvent and
+        eventService.updateEvent do exist, so this is a missing form, not a
+        missing feature. */}
+    <Route
+      path="events/edit/:id"
+      element={<AdminEventEditRedirect />}
+    />
   <Route path="users" element={<AdminAllUsers />} />
   <Route path="clubs" element={<AdminAllClubs />} />
   <Route path="registrations" element={<AdminRegistrations />} />

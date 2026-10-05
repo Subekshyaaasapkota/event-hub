@@ -197,10 +197,16 @@ const ClubDirectory = ({
       isOpen: true,
       title: `Reject ${club.name || "this club"}`,
       //  No email is sent on rejection, so the old copy claiming the user "will
-      //  be notified" was not true. The owner can edit the same club record to
-      //  reapply, which is what updateClubProfile does.
+      //  be notified" was not true either.
+      //
+      //  Reapplying is a fresh submission, not an edit: clubService.applyForClub
+      //  deletes a Rejected club and creates a new Pending one, and
+      //  updateClubProfile only ever touches editable fields on a club that is
+      //  already approved, leaving status alone. So this said the owner could
+      //  "update their application", naming a mechanism that cannot requeue
+      //  anything. The application form at /club/register is the real way back in.
       message:
-        "The club will not get club features. The owner can see this and update their application to try again.",
+        "The club will not get club features. The owner can submit the application again from the club registration form.",
       //  Was "warning", which ConfirmDialog does not recognise. It only branches
       //  on "danger", so a rejection that denies access looked identical to an
       //  approval that grants it.

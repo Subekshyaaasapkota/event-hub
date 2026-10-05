@@ -35,12 +35,11 @@ export const getAdminPageTitle = (pathname) => {
   const exact = ADMIN_NAV_ITEMS.find((item) => item.to === pathname);
   if (exact) return exact.label;
 
-  // Both detail routes sit under /admin and carry an id in the URL, so the
-  // segment can never be used as the heading.
-  if (
-    pathname.startsWith("/admin/event/") ||
-    pathname.startsWith("/admin/events/edit/")
-  ) {
+  // The detail route sits under /admin and carries an id in the URL, so the
+  // segment can never be used as the heading. The old events/edit/ branch is
+  // gone because that route now redirects to /admin/event/:id, so the heading
+  // is resolved from the rewritten path and that prefix never appears.
+  if (pathname.startsWith("/admin/event/")) {
     return "Event details";
   }
 
