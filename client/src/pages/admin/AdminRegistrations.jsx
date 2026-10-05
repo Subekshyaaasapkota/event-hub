@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Info,
 } from "lucide-react";
+import SegmentedControl from "../../components/common/SegmentedControl";
 import DetailDialog from "../../components/common/DetailDialog";
 import useAdmin from "../../hooks/useAdmin";
 import { exportToCsv, stampedFilename } from "../../utils/csv";
@@ -371,49 +372,22 @@ const AdminRegistrations = () => {
             </select>
           </label>
 
-          <div
-            role="radiogroup"
-            aria-label="Filter registrations by status"
-            className="flex overflow-hidden rounded-[12px] border border-hairline bg-white"
-          >
-            {[
-              { value: "all", label: "All" },
-              { value: "Confirmed", label: "Confirmed" },
-              { value: "Pending", label: "Pending" },
-              { value: "Cancelled", label: "Cancelled" },
-              { value: "Failed", label: "Failed" },
-            ]
-              .filter(
-                (option) =>
-                  option.value === "all" || counts[option.value] > 0,
-              )
-              .map((option) => {
-                const active = statusFilter === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() => setStatusFilter(option.value)}
-                    className={`min-h-[44px] px-3 text-[14px] transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink/40 ${
-                      active
-                        ? "bg-ink font-medium text-paper"
-                        : "text-stone-600 hover:bg-hairline/50"
-                    }`}
-                  >
-                    {option.label}
-                    <span
-                      className={`ml-1.5 text-[13px] tabular-nums ${
-                        active ? "text-paper/75" : "text-stone-500"
-                      }`}
-                    >
-                      {option.value === "all" ? counts.all : counts[option.value]}
-                    </span>
-                  </button>
-                );
-              })}
-          </div>
+          <SegmentedControl
+            ariaLabel="Filter registrations by status"
+            className="shrink-0"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={[
+              { value: "all", label: "All", count: counts.all },
+              { value: "Confirmed", label: "Confirmed", count: counts.Confirmed },
+              { value: "Pending", label: "Pending", count: counts.Pending },
+              { value: "Cancelled", label: "Cancelled", count: counts.Cancelled },
+              { value: "Failed", label: "Failed", count: counts.Failed },
+            ].filter(
+              (option) =>
+                option.value === "all" || option.count > 0,
+            )}
+          />
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 // src/pages/admin/AllUsers.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
+import SegmentedControl from "../../components/common/SegmentedControl";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import DetailDialog from "../../components/common/DetailDialog";
 import {
@@ -186,45 +187,18 @@ const AdminAllUsers = () => {
           />
         </div>
 
-        {/* Segmented control. A radiogroup rather than four buttons, so the
-            count and the label are announced together and arrow keys work. */}
-        <div
-          role="radiogroup"
-          aria-label="Filter users by role"
-          className="flex shrink-0 overflow-hidden rounded-[12px] border border-hairline bg-white"
-        >
-          {[
-            { id: "all", label: "All" },
-            { id: "student", label: "Students" },
-            { id: "club", label: "Clubs" },
-            { id: "admin", label: "Admins" },
-          ].map((r) => {
-            const active = roleFilter === r.id;
-            return (
-              <button
-                key={r.id}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => setRoleFilter(r.id)}
-                className={`min-h-[44px] px-3 text-[14px] transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink/40 ${
-                  active
-                    ? "bg-ink font-medium text-paper"
-                    : "text-stone-600 hover:bg-hairline/50"
-                }`}
-              >
-                {r.label}
-                <span
-                  className={`ml-1.5 text-[13px] tabular-nums ${
-                    active ? "text-paper/75" : "text-stone-500"
-                  }`}
-                >
-                  {counts[r.id]}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        <SegmentedControl
+          ariaLabel="Filter users by role"
+          className="shrink-0"
+          value={roleFilter}
+          onChange={setRoleFilter}
+          options={[
+            { value: "all", label: "All", count: counts.all },
+            { value: "student", label: "Students", count: counts.student },
+            { value: "club", label: "Clubs", count: counts.club },
+            { value: "admin", label: "Admins", count: counts.admin },
+          ]}
+        />
       </div>
 
       {/* Table on wide screens, stacked cards below it. A five-column table

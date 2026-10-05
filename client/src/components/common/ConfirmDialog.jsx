@@ -1,4 +1,5 @@
-import React, { useEffect, useId, useRef } from "react";
+import React, { useEffect, useId } from "react";
+import useFocusTrap from "../../hooks/useFocusTrap.js";
 
 /**
  * A confirmation alert in the iOS style.
@@ -11,8 +12,16 @@ import React, { useEffect, useId, useRef } from "react";
  *   - there is no close X and no tap-outside-to-dismiss, also iOS. For a
  *     destructive action, making the person choose is the point
  *
- * Escape and Tab are handled here rather than left to the browser, and focus
- * lands on Cancel so a stray Enter cannot destroy anything.
+ * Focus is parked on Cancel so a stray Enter cannot destroy anything, which
+ * matters more here than anywhere else in the app. It is reached through
+ * useFocusTrap with a data attribute rather than an id: useId returns values
+ * like ":r4:" and a colon has to be escaped to work in a querySelector, so
+ * building the selector from it would break in a way that only shows up at
+ * runtime. The first focusable child is the confirm button, which is the one
+ * control focus must never land on by default.
+ *
+ * Escape stays local, because the hook leaves it to the caller so that closing
+ * is not handled twice.
  */
 const ConfirmDialog = ({
   isOpen,
@@ -24,76 +33,24 @@ const ConfirmDialog = ({
   cancelText = "Cancel",
   type = "danger",
 }) => {
-  const dialogRef = useRef(null);
-  const cancelRef = useRef(null);
-  const restoreFocusRef = useRef(null);
   const titleId = useId();
   const messageId = useId();
+  const dialogRef = useFocusTrap(isOpen, {
+    initialFocus: "[data-dialog-initial-focus]",
+  });
 
-  // Escape cancels, Tab is kept inside the dialog.
   useEffect(() => {
     if (!isOpen) return undefined;
 
     const onKeyDown = (event) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (event.key !== "Tab") return;
-
-      const focusable = dialogRef.current?.querySelectorAll("button:not([disabled])");
-      if (!focusable || focusable.length === 0) return;
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const active = document.activeElement;
-
-      if (event.shiftKey && (active === first || !dialogRef.current.contains(active))) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus();
-      }
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onClose();
     };
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [isOpen, onClose]);
-
-  // Focus Cancel on open, then put focus back where it came from on close.
-  useEffect(() => {
-    if (!isOpen) return undefined;
-
-    restoreFocusRef.current = document.activeElement;
-    const frame = window.requestAnimationFrame(() => cancelRef.current?.focus());
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      const previous = restoreFocusRef.current;
-      if (previous && typeof previous.focus === "function") previous.focus();
-    };
-  }, [isOpen]);
-
-  // Stop the page behind scrolling, and compensate for the scrollbar so the
-  // layout does not jump sideways when it disappears.
-  useEffect(() => {
-    if (!isOpen) return undefined;
-
-    const { body } = document;
-    const previousOverflow = body.style.overflow;
-    const previousPadding = body.style.paddingRight;
-    const gap = window.innerWidth - document.documentElement.clientWidth;
-
-    body.style.overflow = "hidden";
-    if (gap > 0) body.style.paddingRight = `${gap}px`;
-
-    return () => {
-      body.style.overflow = previousOverflow;
-      body.style.paddingRight = previousPadding;
-    };
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -143,7 +100,7 @@ const ConfirmDialog = ({
 
           <button
             type="button"
-            ref={cancelRef}
+            data-dialog-initial-focus
             onClick={onClose}
             className="min-h-[44px] w-full border-t border-hairline px-5 text-[17px] font-semibold text-ink transition-colors hover:bg-hairline/40 active:bg-hairline/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink/40"
           >

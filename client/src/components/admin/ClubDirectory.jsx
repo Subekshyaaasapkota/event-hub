@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import ConfirmDialog from "../common/ConfirmDialog";
+import SegmentedControl from "../common/SegmentedControl";
 import DetailDialog from "../common/DetailDialog";
 import {
   Building2,
@@ -310,40 +311,17 @@ const ClubDirectory = ({
           />
         </div>
 
-        {/*  A radiogroup rather than four buttons, so the label and the count
-            are announced as one control. */}
-        <div
-          role="radiogroup"
-          aria-label="Filter clubs by status"
-          className="flex shrink-0 overflow-hidden rounded-[12px] border border-hairline bg-white"
-        >
-          {FILTERS.map((filter) => {
-            const active = statusFilter === filter.value;
-            return (
-              <button
-                key={filter.value}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => setStatusFilter(filter.value)}
-                className={`min-h-[44px] px-3 text-[14px] transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink/40 ${
-                  active
-                    ? "bg-ink font-medium text-paper"
-                    : "text-stone-600 hover:bg-hairline/50"
-                }`}
-              >
-                {filter.label}
-                <span
-                  className={`ml-1.5 text-[13px] tabular-nums ${
-                    active ? "text-paper/75" : "text-stone-500"
-                  }`}
-                >
-                  {counts[filter.value]}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        <SegmentedControl
+          ariaLabel="Filter clubs by status"
+          className="shrink-0"
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={FILTERS.map((filter) => ({
+            value: filter.value,
+            label: filter.label,
+            count: counts[filter.value],
+          }))}
+        />
       </div>
 
       {loading ? (

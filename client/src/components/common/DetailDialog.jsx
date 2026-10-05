@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useId, useRef } from "react";
+import React, { useCallback, useEffect, useId } from "react";
 import { X } from "lucide-react";
+import useFocusTrap from "../../hooks/useFocusTrap.js";
 
 /**
  * A sheet for looking at one record in full, in the iOS style.
@@ -11,13 +12,21 @@ import { X } from "lucide-react";
  * knowing the platform. This one has a Done button, a close X, and dismisses on
  * the backdrop, which is what iOS does for a detail sheet.
  *
- * The accessibility work ConfirmDialog does is repeated here rather than
- * extracted, because the two differ enough in focus behaviour to share very
- * little: this one focuses the container and lets Tab walk its contents, since
- * trapping on a single button would be useless.
+ * Focus handling is useFocusTrap, the same hook ConfirmDialog uses, rather than
+ * a second implementation. It previously had its own copy that handled Escape
+ * and moved focus in, but no Tab handling at all, with a comment arguing a trap
+ * would be "useless" here. It is not: aria-modal="true" tells a screen reader
+ * the page behind is inert, and letting Tab walk out of the dialog walks focus
+ * into content that is visually covered and supposed to be unreachable. The
+ * dialog holds focus here and cycles through its own controls, which is a real
+ * set of controls rather than the single button that made the trap pointless in
+ * ConfirmDialog's case.
  *
- * The page behind is not scrollable while this is open, and the scrollbar gap is
- * compensated, otherwise the whole layout shifts sideways on every open.
+ * initialFocus is null so the container takes focus and the title is what gets
+ * announced, rather than the close X being read out before any context.
+ *
+ * Escape stays local. The hook deliberately leaves it to the caller so closing
+ * is not handled twice.
  */
 const DetailDialog = ({
   isOpen,
@@ -28,9 +37,8 @@ const DetailDialog = ({
   children,
   footer,
 }) => {
-  const dialogRef = useRef(null);
-  const restoreFocusRef = useRef(null);
   const titleId = useId();
+  const dialogRef = useFocusTrap(isOpen, { initialFocus: null });
 
   const handleKeyDown = useCallback(
     (event) => {
@@ -48,38 +56,6 @@ const DetailDialog = ({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, handleKeyDown]);
-
-  // Move focus into the dialog on open and hand it back on close, so keyboard
-  // and screen reader users are not left where the page was.
-  useEffect(() => {
-    if (!isOpen) return undefined;
-
-    restoreFocusRef.current = document.activeElement;
-    const frame = window.requestAnimationFrame(() => dialogRef.current?.focus());
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      const previous = restoreFocusRef.current;
-      if (previous && typeof previous.focus === "function") previous.focus();
-    };
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return undefined;
-
-    const { body } = document;
-    const previousOverflow = body.style.overflow;
-    const previousPadding = body.style.paddingRight;
-    const gap = window.innerWidth - document.documentElement.clientWidth;
-
-    body.style.overflow = "hidden";
-    if (gap > 0) body.style.paddingRight = `${gap}px`;
-
-    return () => {
-      body.style.overflow = previousOverflow;
-      body.style.paddingRight = previousPadding;
-    };
-  }, [isOpen]);
 
   if (!isOpen) return null;
 

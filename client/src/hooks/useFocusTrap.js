@@ -1,11 +1,16 @@
 import { useEffect, useRef } from "react";
 
+// Every branch has to exclude [tabindex="-1"], not just the last one.
+// "button:not([disabled])" happily matches a button that was explicitly removed
+// from the tab order, and DetailDialog's backdrop is exactly that: a
+// full-bleed invisible dismiss target with tabIndex={-1}. Left in, it became a
+// tab stop that focused an invisible control covering the whole screen.
 const FOCUSABLE = [
-  "a[href]",
-  "button:not([disabled])",
-  "input:not([disabled])",
-  "select:not([disabled])",
-  "textarea:not([disabled])",
+  'a[href]:not([tabindex="-1"])',
+  'button:not([disabled]):not([tabindex="-1"])',
+  'input:not([disabled]):not([tabindex="-1"])',
+  'select:not([disabled]):not([tabindex="-1"])',
+  'textarea:not([disabled]):not([tabindex="-1"])',
   '[tabindex]:not([tabindex="-1"])',
 ].join(",");
 
@@ -63,6 +68,18 @@ export default function useFocusTrap(isOpen, { initialFocus, returnFocusRef } = 
       const last = items[items.length - 1];
       const active = document.activeElement;
 
+      // A dialog opened on top of this one owns focus while it is up. Both traps
+      // are attached to document in the capture phase and both see this Tab, so
+      // without this the lower dialog decides focus is outside itself and pulls
+      // it back, and focus ping-pongs between the two sheets. Deleting from
+      // inside a detail sheet hits exactly that: a confirm on top of a detail.
+      const focusedElsewhereInADialog =
+        active &&
+        active !== document.body &&
+        !container.contains(active) &&
+        active.closest?.('[role="dialog"]');
+      if (focusedElsewhereInADialog) return;
+
       if (!container.contains(active)) {
         event.preventDefault();
         (event.shiftKey ? last : first).focus();
@@ -87,13 +104,22 @@ export default function useFocusTrap(isOpen, { initialFocus, returnFocusRef } = 
 
     document.addEventListener("keydown", onKeyDown, true);
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    // Lock the page behind, and pay back the width of the scrollbar that
+    // disappears with it. Hiding overflow alone makes the whole layout jump
+    // sideways on open, which both dialogs were compensating for by hand.
+    const { body } = document;
+    const previousOverflow = body.style.overflow;
+    const previousPadding = body.style.paddingRight;
+    const gap = window.innerWidth - document.documentElement.clientWidth;
+
+    body.style.overflow = "hidden";
+    if (gap > 0) body.style.paddingRight = `${gap}px`;
 
     return () => {
       cancelAnimationFrame(raf);
       document.removeEventListener("keydown", onKeyDown, true);
-      document.body.style.overflow = previousOverflow;
+      body.style.overflow = previousOverflow;
+      body.style.paddingRight = previousPadding;
       // Guarded: the trigger is often unmounted by the navigation that closing
       // the dialog caused.
       const back = returnToRef.current;
