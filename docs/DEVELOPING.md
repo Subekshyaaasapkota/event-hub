@@ -376,11 +376,12 @@ Worth knowing before you trust a part of this.
   admin, payments and the whole client are checked by lint, build, module
   compilation and manual requests against a running server. The models are
   mocked, so the suite never reaches a real database.
-- `client/scripts/render-check.mjs` renders every route through React's
-  server renderer and reports which ones throw on mount. It is uncommitted
-  scaffolding, and 30 of 31 routes pass. It runs no effects and makes no API
-  calls, so it catches render crashes and nothing else. `CreateEvents` throws on
-  a missing `deviceXDPI` during render.
+- `npm run render:check` in `client` renders every route through React's server
+  renderer and reports which ones throw on mount. All 31 routes pass. It runs no
+  effects and makes no API calls, so it catches render crashes and nothing else.
+  It exists because a route can fail only on mount, with no test or lint rule
+  noticing. Browser-only dependencies are swapped for the no-op stand-ins in
+  `client/scripts/ssr-stubs`, which affect this harness only.
 - **There is no automated visual regression.** A headless Chrome or Edge is
   available on the machine, so screenshots can be captured and compared by eye,
   but nothing does that automatically and nothing fails a build on a visual
