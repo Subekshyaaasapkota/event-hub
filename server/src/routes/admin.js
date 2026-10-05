@@ -7,6 +7,8 @@ import {
   deleteUser,
   deleteEvent,
   getAllRegistrations,
+  getAllEvents,
+  setEventVerification,
 } from "../controllers/adminController.js";
 import {
   adminApproveClub,
@@ -51,6 +53,31 @@ router.get(
   "/registrations",
   [auth, roleBasedAuth("Admin")],
   getAllRegistrations,
+);
+
+/**
+ * @desc Get every event, including ones still awaiting review
+ * @route GET /api/admin/events
+ * @access Private (Admin only)
+ *
+ * Separate from the public GET /api/events, which filters to published and
+ * approved. Reviewing needs to see what has not been approved yet.
+ */
+router.get("/events", [auth, roleBasedAuth("Admin")], getAllEvents);
+
+/**
+ * @desc Approve or reject an event
+ * @route PUT /api/admin/events/:decision/:id
+ * @access Private (Admin only)
+ *
+ * `:decision` is validated against a known set in the controller rather than
+ * trusted as a status value, so this cannot be turned into a route that writes an
+ * arbitrary field.
+ */
+router.put(
+  "/events/:decision/:id",
+  [auth, roleBasedAuth("Admin")],
+  setEventVerification,
 );
 
 /**

@@ -2,6 +2,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import {
   fetchAdminEvents,
+  setAdminEventVerification,
   fetchAllUsers,
   fetchAdminClubs,
   adminApproveClub,
@@ -36,6 +37,18 @@ const adminSlice = createSlice({
   .addCase(fetchAdminEvents.rejected, (state, action) => {
   state.loading = false;
   state.error = action.payload;
+  })
+
+  // Approve or Reject Event. The row is replaced in place from the event the
+  // server returns, rather than the list being refetched, so the decision shows
+  // immediately and the response is the authoritative version. A pending-only
+  // view drops the row through its own filter, because the list here is not
+  // refetched and does not know which filter the admin chose.
+  .addCase(setAdminEventVerification.fulfilled, (state, action) => {
+  state.loading = false;
+  const updated = action.payload?.event;
+  if (!updated) return;
+  state.events = state.events.map((e) => (e._id === updated._id ? updated : e));
   })
 
   // Delete Event. Filtered out of the list the admin is looking at rather than

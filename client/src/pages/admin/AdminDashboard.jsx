@@ -45,7 +45,10 @@ const AdminDashboard = () => {
   const { adminData, fetchEvents, fetchUsers, fetchClubs } = useAdmin();
 
   useEffect(() => {
-    fetchEvents();
+    // "all", because this page reports the total number of events and shows the
+    // latest few. The service defaults to the pending review queue, which would
+    // make "Total events" quietly count only unreviewed events.
+    fetchEvents({ verificationStatus: "all" });
     fetchUsers();
     fetchClubs();
   }, [fetchEvents, fetchUsers, fetchClubs]);

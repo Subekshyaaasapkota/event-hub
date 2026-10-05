@@ -2,6 +2,7 @@
 import { useCallback } from "react";
 import {
   fetchAdminEvents,
+  setAdminEventVerification,
   fetchAllUsers,
   fetchAdminClubs,
   adminApproveClub,
@@ -17,9 +18,22 @@ const useAdmin = () => {
   const adminState = useSelector((state) => state.admin);
 
   //  Events
-  const fetchEvents = useCallback(() => {
-  dispatch(fetchAdminEvents());
+  //  Takes an optional filter object, e.g. { verificationStatus: "pending" }.
+  const fetchEvents = useCallback((filters) => {
+  dispatch(fetchAdminEvents(filters));
   }, [dispatch]);
+
+  //  Approve / Reject Event
+  //  unwrap, so the page can await this and tell a real approval from a failure
+  //  and report the server's reason. Without it the promise always resolves and
+  //  an admin sees "approved" for a decision that was refused.
+  const setEventVerification = useCallback(
+  (eventId, decision, note) =>
+    dispatch(
+      setAdminEventVerification({ eventId, decision, note }),
+    ).unwrap(),
+  [dispatch],
+  );
 
   //  Users
   const fetchUsers = useCallback(() => {
@@ -75,6 +89,7 @@ const useAdmin = () => {
 
   return {
     fetchEvents,
+    setEventVerification,
     fetchUsers,
     fetchClubs,
     approveClub,

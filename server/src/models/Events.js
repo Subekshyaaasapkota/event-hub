@@ -59,6 +59,25 @@ const eventSchema = new mongoose.Schema(
   default: "published",
   },
 
+  // 3b. Admin Verification
+  // Kept separate from `status` on purpose. `status` is the lifecycle the club
+  // controls (draft -> published -> completed); this is the admin's decision on
+  // whether it may appear publicly. An event can be `published` and still
+  // `pending`, which is exactly what a freshly created event looks like.
+  // Only the admin endpoints write this field.
+  verificationStatus: {
+  type: String,
+  enum: ["pending", "approved", "rejected"],
+  default: "pending",
+  },
+  verificationNote: { type: String, trim: true },
+  verifiedAt: { type: Date },
+  verifiedBy: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "User",
+  default: null,
+  },
+
   // 4. Monetization
   isPaid: { type: Boolean, default: false },
   price: { type: Number, default: 0, min: 0 },

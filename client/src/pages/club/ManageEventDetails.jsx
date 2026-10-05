@@ -402,31 +402,84 @@ const AdminEventManagement = () => {
   <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
   <Zap size={20} /> Status
   </h3>
+  {/* Two independent things are shown here because visibility now depends on
+      both. The old card read "Published & Visible" for any published event,
+      which is no longer true: a published event still has to be approved by an
+      admin, and that is the normal state of a freshly created one. Reporting it
+      as visible would leave a club thinking an event is out publicly when
+      nobody can find it. */}
+  {(() => {
+  const verification = event.verificationStatus || "approved";
+  const lifecycleLabel =
+  event.status === "published"
+  ? "Published"
+  : event.status === "draft"
+  ? "Draft"
+  : event.status;
+
+  const lifecycleTone =
+  event.status === "published"
+  ? { box: "bg-emerald-50", icon: "text-emerald-600" }
+  : event.status === "draft"
+  ? { box: "bg-amber-50", icon: "text-amber-600" }
+  : { box: "bg-slate-50", icon: "text-slate-600" };
+
+  const verificationPanel =
+  verification === "approved"
+  ? {
+  box: "bg-emerald-50",
+  icon: "text-emerald-600",
+  label: "Approved & Visible to users",
+  note: "An admin has reviewed this event and it is showing on the public site.",
+  }
+  : verification === "rejected"
+  ? {
+  box: "bg-red-50",
+  icon: "text-red-600",
+  label: "Rejected",
+  note: event.verificationNote
+  ? `An admin left a note: ${event.verificationNote}`
+  : "An admin rejected this event. Edit it and it can go back for review.",
+  }
+  : {
+  box: "bg-amber-50",
+  icon: "text-amber-600",
+  label: "Awaiting review",
+  note: "Submitted and waiting for an admin. It stays off the public site until it is approved.",
+  };
+
+  return (
+  <div className="space-y-3">
   <div
-  className={`p-4 rounded-2xl flex items-center gap-3 ${event.status === "published"
-  ? "bg-emerald-50"
-  : event.status === "draft"
-  ? "bg-amber-50"
-  : "bg-slate-50"
-  }`}
+  className={`p-4 rounded-2xl flex items-center gap-3 ${lifecycleTone.box}`}
   >
-  <CheckCircle
-  size={20}
-  className={`${event.status === "published"
-  ? "text-emerald-600"
-  : event.status === "draft"
-  ? "text-amber-600"
-  : "text-slate-600"
-  }`}
-  />
+  <CheckCircle size={20} className={lifecycleTone.icon} />
+  <div>
   <p className="font-black text-sm uppercase tracking-wider">
-  {event.status === "published"
-  ? "Published & Visible"
-  : event.status === "draft"
-  ? "Draft (Not Visible)"
-  : event.status}
+  {lifecycleLabel}
+  </p>
+  <p className="text-xs text-slate-500 mt-0.5">
+  This is the part you control, on your own dashboard.
   </p>
   </div>
+  </div>
+
+  <div
+  className={`p-4 rounded-2xl flex items-start gap-3 ${verificationPanel.box}`}
+  >
+  <AlertCircle size={20} className={`${verificationPanel.icon} mt-0.5 shrink-0`} />
+  <div>
+  <p className="font-black text-sm uppercase tracking-wider">
+  {verificationPanel.label}
+  </p>
+  <p className="text-xs text-slate-600 mt-0.5">
+  {verificationPanel.note}
+  </p>
+  </div>
+  </div>
+  </div>
+  );
+  })()}
   </div>
 
   {/* Share Card */}

@@ -106,6 +106,42 @@ const STATUS_CHIP = {
   },
 };
 
+/*
+ * Verification is a separate axis from the lifecycle statuses above, so it gets
+ * its own filter row rather than being folded into STATUS_FILTERS. An event can
+ * be "Open for signups" and still awaiting review, which is the normal state of
+ * every freshly created event, so mixing the two would hide that.
+ */
+const VERIFICATION_FILTERS = [
+  { value: "pending", label: "Awaiting review" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Rejected" },
+  { value: "all", label: "All" },
+];
+
+const VERIFICATION_CHIP = {
+  pending: {
+    label: "Awaiting review",
+    chip: "border-amber-200 bg-amber-50 text-amber-700",
+    icon: Clock,
+  },
+  approved: {
+    label: "Approved",
+    chip: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    icon: CheckCircle2,
+  },
+  rejected: {
+    label: "Rejected",
+    chip: "border-red-200 bg-red-50 text-red-700",
+    icon: Ban,
+  },
+};
+
+// Events created before verification existed have no field on them. They were
+// publicly visible back then, so treating a missing value as pending would hide
+// the whole existing catalogue from this list until someone re-approved it.
+const verificationOf = (event) => event.verificationStatus || "approved";
+
 const formatDateTime = (value) => {
   if (!value) return "Not set";
   return new Date(value).toLocaleString("en-US", {
@@ -120,9 +156,12 @@ const formatDateTime = (value) => {
 const PER_PAGE = 5;
 
 const AdminManageEvents = () => {
-  const { adminData, fetchEvents, deleteEvent } = useAdmin();
+  const { adminData, fetchEvents, deleteEvent, setEventVerification } = useAdmin();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  // Opens on the review queue rather than everything. The page a moderator
+  // visits is the one holding work for them.
+  const [verificationFilter, setVerificationFilter] = useState("pending");
   const [currentPage, setCurrentPage] = useState(1);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
@@ -138,7 +177,11 @@ const AdminManageEvents = () => {
   const events = useMemo(() => adminData.events || [], [adminData.events]);
 
   useEffect(() => {
-    fetchEvents();
+  // "all" rather than letting the service default to pending: the whole list is
+  // fetched once and the verification filter narrows it client-side, the same way
+  // the lifecycle filter already works here. Filtering server-side too would mean
+  // the counts below could only be counted within whatever was last fetched.
+  fetchEvents({ verificationStatus: "all" });
   }, [fetchEvents]);
 
   // One pass for every count. This was four separate filters over the same
@@ -150,10 +193,20 @@ const AdminManageEvents = () => {
     return acc;
   }, [events, now]);
 
+  const verificationCounts = useMemo(() => {
+    const acc = { all: events.length };
+    for (const { value } of VERIFICATION_FILTERS) acc[value] ??= 0;
+    for (const event of events) acc[verificationOf(event)] += 1;
+    return acc;
+  }, [events]);
+
   const filteredEvents = useMemo(() => {
     const needle = searchTerm.trim().toLowerCase();
 
     return events.filter((event) => {
+      if (verificationFilter !== "all" && verificationOf(event) !== verificationFilter) {
+        return false;
+      }
       if (statusFilter !== "all" && deriveStatus(event, now) !== statusFilter) {
         return false;
       }
@@ -168,7 +221,7 @@ const AdminManageEvents = () => {
         event.venue,
       ].some((field) => field?.toLowerCase().includes(needle));
     });
-  }, [events, searchTerm, statusFilter, now]);
+  }, [events, searchTerm, statusFilter, verificationFilter, now]);
 
   const totalPages = Math.max(1, Math.ceil(filteredEvents.length / PER_PAGE));
 
@@ -181,15 +234,38 @@ const AdminManageEvents = () => {
     page * PER_PAGE,
   );
 
-  const applyFilter = (value) => {
-    setStatusFilter(value);
-    setCurrentPage(1);
+const applyFilter = (value) => {
+  setStatusFilter(value);
+  setCurrentPage(1);
+  };
+
+  const applyVerificationFilter = (value) => {
+  setVerificationFilter(value);
+  setCurrentPage(1);
+  };
+
+  // Approve and Reject are both a one-click decision with no confirmation. The
+  // confirmation dialog is for deletion because that destroys registrations;
+  // approval is reversible from the same list, so making it take two clicks only
+  // slows down reviewing a queue. Rejection is not destructive either.
+  const handleVerification = async (eventId, decision, title) => {
+  try {
+    await setEventVerification(eventId, decision);
+    toast.success(
+    decision === "approve"
+      ? `“${title}” is approved and now visible to users.`
+      : `“${title}” was rejected and stays hidden from users.`,
+    );
+  } catch (error) {
+    toast.error(error.message || "Could not update this event.");
+  }
   };
 
   const clearAll = () => {
-    setStatusFilter("all");
-    setSearchTerm("");
-    setCurrentPage(1);
+  setStatusFilter("all");
+  setVerificationFilter("all");
+  setSearchTerm("");
+  setCurrentPage(1);
   };
 
   const handleDeleteEvent = (eventId, title) => {
@@ -214,6 +290,10 @@ const AdminManageEvents = () => {
     (f) => f.value === statusFilter,
   )?.label;
 
+  const activeVerificationLabel = VERIFICATION_FILTERS.find(
+    (f) => f.value === verificationFilter,
+  )?.label;
+
   if (adminData.error) {
     return (
       <div className="flex flex-col items-center rounded-2xl border border-red-200 bg-red-50 px-6 py-14 text-center">
@@ -226,7 +306,7 @@ const AdminManageEvents = () => {
         <p className="mt-1 max-w-sm text-sm text-red-800">{adminData.error}</p>
         <button
           type="button"
-          onClick={() => fetchEvents()}
+          onClick={() => fetchEvents({ verificationStatus: "all" })}
           className="mt-4 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-red-700"
         >
           Try again
@@ -237,6 +317,34 @@ const AdminManageEvents = () => {
 
   return (
     <div className="space-y-6">
+      <div
+        className="flex flex-col gap-3 rounded-2xl border border-hairline bg-white p-4 sm:flex-row sm:items-center"
+      >
+        <span className="text-xs font-medium uppercase tracking-wide text-stone-500">
+          Verification
+        </span>
+        <div className="flex flex-wrap gap-2">
+          {VERIFICATION_FILTERS.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              onClick={() => applyVerificationFilter(filter.value)}
+              aria-pressed={verificationFilter === filter.value}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-200 ${
+                verificationFilter === filter.value
+                  ? "border-ink bg-ink text-paper"
+                  : "border-hairline bg-white text-stone-700 hover:bg-stone-100"
+              }`}
+            >
+              {filter.label}
+              <span className="tabular-nums opacity-70">
+                {verificationCounts[filter.value] ?? 0}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {STATUS_FILTERS.map((filter) => (
           <StatusTile
@@ -299,6 +407,7 @@ const AdminManageEvents = () => {
 
         <p className="shrink-0 text-xs text-stone-500 sm:ml-auto">
           Showing {filteredEvents.length} of {events.length} events
+          {verificationFilter !== "all" && ` · ${activeVerificationLabel}`}
         </p>
       </div>
 
@@ -317,14 +426,20 @@ const AdminManageEvents = () => {
             <Inbox size={20} aria-hidden="true" />
           </span>
           <h2 className="mt-3 font-display text-base font-semibold text-ink">
-            {events.length === 0 ? "No events yet" : "Nothing matches"}
+            {events.length === 0
+              ? "No events yet"
+              : verificationFilter === "pending" && filteredEvents.length === 0
+                ? "Nothing waiting on you"
+                : "Nothing matches"}
           </h2>
           <p className="mt-1 max-w-sm text-sm text-stone-500">
             {events.length === 0
-              ? "Events created by clubs will appear here as soon as the first one is published."
-              : `No events match ${searchTerm ? `“${searchTerm}”` : activeFilterLabel.toLowerCase()}.`}
+              ? "Events created by clubs will appear here as soon as the first one is submitted for review."
+              : verificationFilter === "pending" && filteredEvents.length === 0
+                ? "Every event has been reviewed. Switch to Approved or Rejected to see past decisions."
+                : `No events match ${searchTerm ? `“${searchTerm}”` : `${activeVerificationLabel.toLowerCase()}${statusFilter !== "all" ? `, ${activeFilterLabel.toLowerCase()}` : ""}`}.`}
           </p>
-          {events.length > 0 && (
+          {(searchTerm || statusFilter !== "all" || verificationFilter !== "all") && (
             <button
               type="button"
               onClick={clearAll}
@@ -343,6 +458,8 @@ const AdminManageEvents = () => {
               status={deriveStatus(event, now)}
               delay={index * 50}
               onDelete={() => handleDeleteEvent(event._id, event.title)}
+              onApprove={() => handleVerification(event._id, "approve", event.title)}
+              onReject={() => handleVerification(event._id, "reject", event.title)}
             />
           ))}
         </ul>
@@ -422,11 +539,13 @@ const StatusTile = ({ label, value, selected, onClick }) => (
   </button>
 );
 
-const EventRow = ({ event, status, delay, onDelete }) => {
+const EventRow = ({ event, status, delay, onDelete, onApprove, onReject }) => {
   const meta = STATUS_CHIP[status];
   const poster = normalizePoster(event.poster);
   const registered = event.currentParticipants ?? 0;
   const capacity = event.participantCount ?? 0;
+  const verification = verificationOf(event);
+  const verificationMeta = VERIFICATION_CHIP[verification];
 
   return (
     <li
@@ -466,6 +585,12 @@ const EventRow = ({ event, status, delay, onDelete }) => {
                 <meta.icon size={12} aria-hidden="true" />
                 {meta.label}
               </span>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium ${verificationMeta.chip}`}
+              >
+                <verificationMeta.icon size={12} aria-hidden="true" />
+                {verificationMeta.label}
+              </span>
             </div>
 
             <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2 lg:grid-cols-3">
@@ -476,6 +601,13 @@ const EventRow = ({ event, status, delay, onDelete }) => {
               <Field label="Event date" value={formatDateTime(event.eventDate)} />
               <Field label="Deadline" value={formatDateTime(event.deadline)} />
             </dl>
+
+            {event.verificationNote && (
+              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                <span className="font-medium">Review note:</span>{" "}
+                {event.verificationNote}
+              </p>
+            )}
 
             <p className="mt-3 text-xs text-stone-500">
               <span className="font-medium text-ink tabular-nums">
@@ -493,7 +625,29 @@ const EventRow = ({ event, status, delay, onDelete }) => {
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 border-t border-hairline pt-3 sm:w-36 sm:flex-col sm:items-stretch sm:justify-start sm:border-0 sm:pt-0">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-hairline pt-3 sm:w-44 sm:flex-col sm:items-stretch sm:justify-start sm:border-0 sm:pt-0">
+          {/* Only the decision that changes state is offered. Offering Approve on
+              an approved event would just be a no-op the admin has to reason
+              about. */}
+          {verification !== "approved" ? (
+            <button
+              type="button"
+              onClick={onApprove}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 transition-colors duration-200 hover:bg-emerald-100 sm:flex-none"
+            >
+              <CheckCircle2 size={14} aria-hidden="true" />
+              Approve
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onReject}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 transition-colors duration-200 hover:bg-red-50 sm:flex-none"
+            >
+              <Ban size={14} aria-hidden="true" />
+              Revoke
+            </button>
+          )}
           <Link
             to={`/admin/event/${event._id}`}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-hairline bg-white px-3 py-2 text-xs font-medium text-ink transition-colors duration-200 hover:bg-stone-100 sm:flex-none"

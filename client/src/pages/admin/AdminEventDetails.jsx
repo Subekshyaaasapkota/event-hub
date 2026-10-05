@@ -123,7 +123,8 @@ const formatDateTime = (value) => {
 const AdminEventDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { adminData, fetchEvents, deleteEvent } = useAdmin();
+  const { adminData, fetchEvents, deleteEvent, setEventVerification } =
+    useAdmin();
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
@@ -135,7 +136,11 @@ const AdminEventDetails = () => {
   const error = adminData.error;
 
   useEffect(() => {
-    if (!events?.length) fetchEvents();
+    // "all", because this page can be opened directly on any event by URL. The
+    // service defaults to the pending queue, and with that default an approved
+    // event's own detail page would fetch a list that does not contain it and
+    // report the event as not found.
+    if (!events?.length) fetchEvents({ verificationStatus: "all" });
   }, [events, fetchEvents]);
 
   // Selected from the already-loaded list rather than fetched again. One list is
@@ -148,6 +153,22 @@ const AdminEventDetails = () => {
 
   const now = useMemo(() => new Date(), []);
   const status = event ? deriveStatus(event, now) : null;
+  // Events predating verification have no field and were publicly visible, so a
+  // missing value reads as approved here for the same reason as in the list.
+  const verification = event?.verificationStatus || "approved";
+
+  const decide = async (decision) => {
+    try {
+      await setEventVerification(id, decision);
+      toast.success(
+      decision === "approve"
+        ? "Event approved. It is now visible to users."
+        : "Event rejected. It stays hidden from users.",
+      );
+    } catch (err) {
+      toast.error(err.message || "Could not update this event.");
+    }
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -256,6 +277,63 @@ const AdminEventDetails = () => {
         <div>
           <p className="text-sm font-semibold">{meta.label}</p>
           <p className="mt-0.5 text-xs opacity-80">{meta.note}</p>
+        </div>
+      </div>
+
+      {/* Verification sits next to the lifecycle banner rather than inside it.
+          The two are separate decisions: an event can be open for signups and
+          still be invisible to users because nobody has reviewed it yet, and
+          collapsing them into one banner would hide that distinction. */}
+      <div
+        className={`flex flex-col gap-3 rounded-2xl border px-5 py-4 sm:flex-row sm:items-center sm:justify-between ${
+          verification === "approved"
+            ? "border-emerald-200 bg-emerald-50"
+            : verification === "rejected"
+              ? "border-red-200 bg-red-50"
+              : "border-amber-200 bg-amber-50"
+        }`}
+      >
+        <div>
+          <p className="text-sm font-semibold text-ink">
+            {verification === "approved"
+              ? "Approved and visible to users"
+              : verification === "rejected"
+                ? "Rejected and hidden from users"
+                : "Awaiting admin review"}
+          </p>
+          <p className="mt-0.5 text-xs text-stone-600">
+            {event.verifiedAt
+              ? `Last reviewed ${formatDateTime(event.verifiedAt)}`
+              : "Not reviewed yet. This event is not visible to users until it is approved."}
+          </p>
+          {event.verificationNote && (
+            <p className="mt-1.5 text-xs text-stone-700">
+              <span className="font-medium">Review note:</span>{" "}
+              {event.verificationNote}
+            </p>
+          )}
+        </div>
+
+        <div className="flex shrink-0 gap-2">
+          {verification === "approved" ? (
+            <button
+              type="button"
+              onClick={() => decide("reject")}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 transition-colors duration-200 hover:bg-red-50"
+            >
+              <Ban size={14} aria-hidden="true" />
+              Revoke approval
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => decide("approve")}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-medium text-emerald-700 transition-colors duration-200 hover:bg-emerald-50"
+            >
+              <CheckCircle2 size={14} aria-hidden="true" />
+              Approve
+            </button>
+          )}
         </div>
       </div>
 

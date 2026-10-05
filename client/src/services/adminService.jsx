@@ -1,14 +1,46 @@
 import api from "../api/axios.js";
 
 const adminService = {
-  getAdminEvents: async () => {
+/**
+   * Fetches every event for the admin console, including ones still awaiting
+   * review.
+   *
+   * This used to call the public /api/events, which only returns published and
+   * approved events. That made review impossible: an event waiting on a decision
+   * is by definition not in that response, so there was nothing to approve.
+   *
+   * `verificationStatus` narrows the list, defaulting to "pending" so the
+   * console opens on the queue that actually needs work. "all" passes straight
+   * through for browsing everything.
+   */
+  getAdminEvents: async ({ verificationStatus = "pending", status } = {}) => {
   try {
-  const response = await api.get("/api/events");
-  return response.data;
+    const params = { verificationStatus };
+    if (status && status !== "all") params.status = status;
+    const response = await api.get("/api/admin/events", { params });
+    return response.data;
   } catch (error) {
-  throw new Error(
-  error.response?.data?.message || "Failed to fetch events",
-  );
+    throw new Error(
+    error.response?.data?.message || "Failed to fetch events",
+    );
+  }
+  },
+
+  /**
+   * Records an admin's approval decision on an event. `note` is optional and is
+   * only sent when supplied, so approving does not blank a note an admin left
+   * when rejecting earlier.
+   */
+  setEventVerification: async (eventId, decision, note) => {
+  try {
+    const response = await api.put(`/api/admin/events/${decision}/${eventId}`, {
+    ...(note ? { note } : {}),
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(
+    error.response?.data?.message || "Failed to update this event",
+    );
   }
   },
 

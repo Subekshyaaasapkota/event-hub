@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import adminService from "../services/adminService.js";
+import eventService from "../services/eventService.js";
 import Registration from "../models/Registration.js";
 import Events from "../models/Events.js";
 
@@ -94,6 +95,77 @@ const deleteEvent = async (req, res) => {
   }
 };
 
+/**
+ * Every event, for the admin console.
+ *
+ * The admin console used to read the public `/api/events` endpoint, which only
+ * returns published and now approved events. That is fine for browsing but
+ * useless for review: an event waiting on a decision is by definition not in
+ * that response, so there was nothing to approve.
+ */
+const getAllEvents = async (req, res) => {
+  try {
+    const events = await eventService.getAllEventsForAdmin({
+      verificationStatus: req.query.verificationStatus,
+      status: req.query.status,
+    });
+    res.status(200).json(events);
+  } catch (error) {
+    console.error("Error in getAllEvents Controller:", error);
+    res.status(500).json({ message: "Could not load events." });
+  }
+};
+
+/**
+ * Approve or reject an event.
+ *
+ * One handler for both, because the only difference is the decision value and
+ * two near-identical handlers is how they drift apart. The decision is written
+ * through eventService rather than straight onto the document so the
+ * verifiedBy/verifiedAt stamp is applied the same way in both cases.
+ */
+const setEventVerification = async (req, res) => {
+  const { id } = req.params;
+  const decision = req.params.decision;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "That event id is not valid" });
+  }
+
+  const target =
+    decision === "approve" ? "approved" : decision === "reject" ? "rejected" : null;
+
+  if (!target) {
+    return res
+      .status(400)
+      .json({ message: "Unknown verification action" });
+  }
+
+  try {
+    // req.user.id, not _id: authService maps the user's _id to id in the JWT
+    // payload, so _id would stamp undefined onto every reviewed event.
+    const event = await eventService.setEventVerification(id, target, {
+      adminId: req.user?.id,
+      note: req.body?.note,
+    });
+
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    res.status(200).json({
+      message:
+  target === "approved"
+          ? "Event approved. It is now visible to users."
+          : "Event rejected. It stays hidden from users.",
+      event,
+    });
+  } catch (error) {
+    console.error("Error in setEventVerification Controller:", error);
+    res.status(500).json({ message: "Could not update this event." });
+  }
+};
+
 const getAllRegistrations = async (req, res) => {
   try {
     // Event.organizer is a ref to RegisterClub. It has to be populated with the
@@ -117,4 +189,11 @@ const getAllRegistrations = async (req, res) => {
   }
 };
 
-export { getAllUsers, deleteUser, getAllRegistrations, deleteEvent };
+export {
+  getAllUsers,
+  deleteUser,
+  getAllRegistrations,
+  deleteEvent,
+  getAllEvents,
+  setEventVerification,
+};

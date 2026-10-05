@@ -2,17 +2,34 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import adminService from "../../services/adminService"; // Make sure path is correct
 
 //  Events
-export const fetchAdminEvents = createAsyncThunk(
-  "admin/fetchEvents",
-  async (_, { rejectWithValue }) => {
-  try {
-  const response = await adminService.getAdminEvents();
-  return response;
-  } catch (error) {
-  return rejectWithValue(error?.response?.data?.message || error.message);
-  }
-  },
-);
+  //  Takes an optional filter. Defaults to the pending queue in the service so
+  //  the admin console opens on what needs a decision.
+  export const fetchAdminEvents = createAsyncThunk(
+    "admin/fetchEvents",
+    async (filters, { rejectWithValue }) => {
+    try {
+    const response = await adminService.getAdminEvents(filters || {});
+    return response;
+    } catch (error) {
+    return rejectWithValue(error?.response?.data?.message || error.message);
+    }
+    },
+  );
+
+  //  Approve or Reject Event
+  //  `decision` is "approve" or "reject" and is interpolated into the URL rather
+  //  than trusted as a status value, so it cannot become a write to an arbitrary
+  //  field. The server validates it again on arrival.
+  export const setAdminEventVerification = createAsyncThunk(
+    "admin/setEventVerification",
+    async ({ eventId, decision, note }, { rejectWithValue }) => {
+    try {
+      return await adminService.setEventVerification(eventId, decision, note);
+    } catch (error) {
+    return rejectWithValue(error?.response?.data?.message || error.message);
+    }
+    },
+  );
 
 //  Users
 export const fetchAllUsers = createAsyncThunk(

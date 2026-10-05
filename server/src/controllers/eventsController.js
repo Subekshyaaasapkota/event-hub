@@ -253,22 +253,40 @@ const getEventById = async (req, res) => {
     const event = await eventService.getEventById(eventId);
     if (!event) return res.status(404).json({ error: "Event not found" });
 
-    // A draft or cancelled event is not public. The owning club and any Admin
-    // still need to reach it to review or edit it, so they are let through and
-    // everyone else gets the same 404 as a missing event, which avoids
-    // confirming that an unpublished event exists.
+    // A draft, cancelled or unreviewed event is not public. The owning club and
+    // any Admin still need to reach it to review or edit it, so they are let
+    // through and everyone else gets the same 404 as a missing event, which
+    // avoids confirming that a hidden event exists.
+    //
+    // Two independent conditions here, because visibility is two independent
+    // axes. An event can be published but still awaiting approval, which is the
+    // state every newly created event starts in, so checking `status` alone
+    // would have left unreviewed events readable by anyone with the link.
     //
     // The token payload carries "id" and "roles"; there is no "_id" on it,
     // because authService maps the user document down before signing. The
     // owning user id on a club is "createdBy".
-    if (event.status !== "published") {
+    const isHidden =
+    event.status !== "published" || event.verificationStatus !== "approved";
+
+    if (isHidden) {
       const caller = req.user;
       const roles = Array.isArray(caller?.roles) ? caller.roles : [];
       const ownsEvent =
       caller?.id !== undefined &&
-      event.organizer?.createdBy !== undefined &&
-      event.organizer.createdBy !== null &&
-      String(event.organizer.createdBy) === String(caller.id);
+      (
+      // Normally the club that organises the event.
+      (event.organizer?.createdBy !== undefined &&
+      event.organizer?.createdBy !== null &&
+      String(event.organizer.createdBy) === String(caller.id)) ||
+      // Fall back to the user recorded as creating the event, which is the only
+      // thing left to go on when the club record has been removed. Without this
+      // an event whose organizer is gone is unreachable even by the person who
+      // created it, so they can see the club rejected it but not fix it.
+      (event.createdBy !== undefined &&
+      event.createdBy !== null &&
+      String(event.createdBy) === String(caller.id))
+      );
 
       if (!roles.includes("Admin") && !ownsEvent) {
         return res.status(404).json({ error: "Event not found" });
