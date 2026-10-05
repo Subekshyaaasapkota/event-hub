@@ -56,9 +56,13 @@ const Login = () => {
         </Link>
 
         <div className="mb-8 text-center">
-          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-ink text-3xl font-semibold text-paper">
-            E
-          </div>
+          <img
+            src="/eventhub-logo.svg"
+            alt=""
+            width="64"
+            height="64"
+            className="mb-4 h-16 w-16"
+          />
           <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">
             EventHub
           </h1>

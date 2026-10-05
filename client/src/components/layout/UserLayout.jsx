@@ -42,6 +42,7 @@ const UserLayout = () => {
       <AppSidebar
         title="EventHub"
         subtitle="Student"
+        logoSrc="/eventhub-logo.svg"
         items={NAV_ITEMS}
         backLabel="Portal view"
         onSignOut={logout}

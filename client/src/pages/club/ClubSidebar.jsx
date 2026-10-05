@@ -68,6 +68,7 @@ const ClubSidebar = () => {
     <AppSidebar
       title="EventHub"
       subtitle="Club console"
+      logoSrc="/eventhub-logo.svg"
       items={NAV_ITEMS}
       extraSection={upcomingSection}
       backLabel="Portal view"

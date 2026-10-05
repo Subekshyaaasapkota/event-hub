@@ -182,11 +182,17 @@ const Navbar = () => {
   const shell = (children) => (
     <nav className="fixed inset-x-0 top-0 z-50 border-b border-hairline bg-paper/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-        <Link
-          to="/"
-          className="font-display text-xl font-semibold tracking-tight text-ink"
-        >
-          EventHub
+        <Link to="/" className="flex items-center gap-2.5">
+          <img
+            src="/eventhub-logo.svg"
+            alt=""
+            width="28"
+            height="28"
+            className="h-7 w-7 shrink-0"
+          />
+          <span className="font-display text-xl font-semibold tracking-tight text-ink">
+            EventHub
+          </span>
         </Link>
         {children}
       </div>

@@ -34,9 +34,18 @@ const Footer = () => {
             a bg-clip-text gradient has no real foreground colour, so it
             disappears entirely in forced-colors mode. */}
         <div className="col-span-2 md:col-span-1">
-          <p className="font-display text-xl font-semibold tracking-tight text-ink">
-            EventHub
-          </p>
+          <div className="flex items-center gap-2.5">
+            <img
+              src="/eventhub-logo.svg"
+              alt=""
+              width="28"
+              height="28"
+              className="h-7 w-7 shrink-0"
+            />
+            <p className="font-display text-xl font-semibold tracking-tight text-ink">
+              EventHub
+            </p>
+          </div>
           <p className="mt-3 max-w-xs text-sm leading-relaxed text-stone-600">
             A centralized platform where students discover campus events and
             organizers manage them seamlessly.

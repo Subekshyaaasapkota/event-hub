@@ -37,6 +37,7 @@ const SectionLabel = ({ children }) => (
 const AppSidebar = ({
   title,
   subtitle,
+  logoSrc,
   items,
   extraSection,
   backTo = "/",
@@ -79,9 +80,20 @@ const AppSidebar = ({
       {/* Persistent rail */}
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-hairline bg-white lg:flex">
         <div className="px-6 pb-6 pt-7">
-          <p className="font-display text-lg font-semibold tracking-tight text-ink">
-            {title}
-          </p>
+          <div className="flex items-center gap-2.5">
+            {logoSrc ? (
+              <img
+                src={logoSrc}
+                alt=""
+                width="30"
+                height="30"
+                className="h-[30px] w-[30px] shrink-0"
+              />
+            ) : null}
+            <p className="font-display text-lg font-semibold tracking-tight text-ink">
+              {title}
+            </p>
+          </div>
           {subtitle ? (
             <p className="mt-1 text-[12px] font-semibold uppercase tracking-wide text-stone-500">
               {subtitle}
