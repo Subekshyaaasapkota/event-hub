@@ -95,16 +95,44 @@ describe("applyForClub", () => {
     expect(result._id).toBe(newClubId);
   });
 
-  it("clears the stale club reference before pointing at the new one", async () => {
+  it("repoints the user before deleting the rejected record", async () => {
     RegisterClub.findOne.mockResolvedValue(existing("Rejected"));
 
     await applyForClub(userId, clubData);
 
-    // Two writes in order: null, then the new id. The null write is what stops
-    // User.club pointing at a document that was just deleted.
-    const calls = User.findByIdAndUpdate.mock.calls;
-    expect(calls).toContainEqual([userId, { club: null }]);
-    expect(calls[calls.length - 1]).toEqual([userId, { club: newClubId }]);
+    // Order, not just presence. User.club is moved to the new document while
+    // the old one still exists and only then is the old one removed, so there
+    // is no point in the sequence where User.club names a document that has
+    // been deleted. The previous order deleted first and left that dangling
+    // whenever the User write failed.
+    const order = [
+      ["create", RegisterClub.create.mock.invocationCallOrder[0]],
+      ["user", User.findByIdAndUpdate.mock.invocationCallOrder[0]],
+      ["delete", RegisterClub.deleteOne.mock.invocationCallOrder[0]],
+    ].sort((a, b) => a[1] - b[1]);
+
+    expect(order.map(([step]) => step)).toEqual(["create", "user", "delete"]);
+    expect(User.findByIdAndUpdate).toHaveBeenCalledWith(userId, {
+      club: newClubId,
+    });
+    // The null write is gone: there is no window that needs it any more.
+    expect(User.findByIdAndUpdate).not.toHaveBeenCalledWith(userId, {
+      club: null,
+    });
+  });
+
+  it("leaves the rejected club in place when creating the replacement fails", async () => {
+    RegisterClub.findOne.mockResolvedValue(existing("Rejected"));
+    RegisterClub.create.mockRejectedValue(new Error("write concern error"));
+
+    await expect(applyForClub(userId, clubData)).rejects.toThrow(
+      /write concern/,
+);
+
+    // Nothing was removed and the user's reference was never touched, so the
+    // owner can simply submit again.
+    expect(RegisterClub.deleteOne).not.toHaveBeenCalled();
+    expect(User.findByIdAndUpdate).not.toHaveBeenCalled();
   });
 
   it("refuses a second application while one is pending", async () => {

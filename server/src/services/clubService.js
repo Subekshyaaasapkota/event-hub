@@ -36,19 +36,41 @@ const applyForClub = async (userId, clubData) => {
   if (existing.status === "Approved") {
   throw new Error("Your club is already approved.");
   }
-  // Rejected -> allow a fresh application
-  await RegisterClub.deleteOne({ _id: existing._id });
-  await User.findByIdAndUpdate(userId, { club: null });
+  // Rejected -> the old record is replaced below. This is not a transaction, and
+  // that is a deliberate trade: it used to delete first and create second, with
+  // a null write to User.club in between, so a failure anywhere left the owner
+  // with no application at all and no record that they had ever been rejected.
+  //
+  // The order below is chosen so that no step can leave a dangling pointer, and
+  // so the rejected record survives any failure that could be recovered from:
+  //
+  //   create fails  -> the rejected club is still there, still reappliable,
+  //                    and User.club still points at something real
+  //   User write fails -> two club documents exist for one user and User.club
+  //                    still points at the rejected one. Messy and visible, but
+  //                    nothing is lost and nothing dangles
+  //   delete fails  -> same, and the rejected record is still present to retry
+  //
+  // Deleting last is what removes the dangling case entirely: at no point does
+  // User.club reference a document that has been removed. The null write that
+  // used to sit between the delete and the create is gone, because overwriting
+  // the reference while the old document still exists was never at risk.
   }
 
   const newClub = await RegisterClub.create({
-  ...clubData,
-  createdBy: userId,
-  status: "Pending",
-  isVerified: false,
+    ...clubData,
+    createdBy: userId,
+    status: "Pending",
+    isVerified: false,
   });
 
+  // Repointed before the old record is removed, not after.
   await User.findByIdAndUpdate(userId, { club: newClub._id });
+
+  if (existing) {
+    await RegisterClub.deleteOne({ _id: existing._id });
+  }
+
   return newClub;
 };
 

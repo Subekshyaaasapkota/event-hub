@@ -2,6 +2,27 @@ import Event from "../models/Events.js";
 import Registration from "../models/Registration.js";
 
 /**
+ * A 500 for the client, with the real failure kept on the server.
+ *
+ * These paths used to hand `error.message` straight back. That is the driver or
+ * Mongoose talking, so the user was shown things like `Cast to ObjectId failed
+ * for value "abc" at path "user"` or a full MongoDB error document. It leaks
+ * schema and field names, it is unreadable to whoever has to act on it, and it
+ * varies with the version of the driver.
+ *
+ * So the message is logged here, where it is useful, and the client gets a
+ * sentence it can act on. Deliberate refusals do not come through this: they are
+ * returned explicitly by the code that raises them, so they keep their wording.
+ */
+const unexpected = (error, context) => {
+  console.error(`[registrationService] ${context}:`, error);
+  return {
+    status: 500,
+    data: { error: "Something went wrong on our side. Please try again." },
+  };
+};
+
+/**
  * Registration rules
  * ------------------
  * `participantCount`  = capacity (max seats)  <- set by the organizer
@@ -232,7 +253,7 @@ const registerForEvent = async (eventId, userId, formData) => {
       };
     }
 
-    return { status: 500, data: { error: error.message } };
+return unexpected(error, "registerEvent");
   }
 };
 
@@ -241,10 +262,10 @@ const getEventRegistrations = async (eventId) => {
   const registrations = await Registration.find({ event: eventId }).populate(
   "user",
   "name email",
-  );
+);
   return { status: 200, data: registrations };
   } catch (error) {
-  return { status: 500, data: { error: error.message } };
+  return unexpected(error, "getEventRegistrations");
   }
 };
 
@@ -261,7 +282,7 @@ const getClubRegistrations = async (userId) => {
 
   return { status: 200, data: registrations };
   } catch (error) {
-  return { status: 500, data: { error: error.message } };
+  return unexpected(error, "getClubRegistrations");
   }
 };
 
@@ -270,10 +291,10 @@ const getMyRegistrations = async (userId) => {
   const registrations = await Registration.find({ user: userId }).populate(
   "event",
   "title eventDate poster isPaid price district venue",
-  );
+);
   return { status: 200, data: registrations };
   } catch (error) {
-  return { status: 500, data: { error: error.message } };
+  return unexpected(error, "getMyRegistrations");
   }
 };
 
