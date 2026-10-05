@@ -28,6 +28,7 @@ import ClubSidebar from "./ClubSidebar";
 import useOrganizer from "../../hooks/useOrganizer";
 import { toast } from "react-hot-toast";
 import Papa from "papaparse";
+import { exportToCsv, stampedFilename } from "../../utils/csv";
 import { getImageUrl } from "../../utils/imageUrl";
 
 // Payment Symbol Assets
@@ -157,6 +158,64 @@ const ManageEventRegisterByUser = () => {
   });
   };
 
+  const handleExport = () => {
+  const slug = (value) =>
+  String(value || "")
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, "-")
+  .replace(/^-|-$/g, "");
+
+  const base = activeEvent
+  ? `participants-${slug(activeEvent.title)}`
+  : "participants-all-events";
+
+  // For a Google Form event the sheet is the participant list, so that is what
+  // gets exported. The sheet decides its own columns, so they are read off the
+  // rows rather than fixed.
+  if (registrationMode === "google_form" && filteredGoogleData.length) {
+  const columns = Object.keys(filteredGoogleData[0]).map((key) => ({
+  key,
+  label: key,
+  }));
+  const result = exportToCsv({
+  rows: filteredGoogleData,
+  columns,
+  filename: stampedFilename(base),
+  emptyMessage: "No sheet responses match the current search.",
+  });
+  return result.ok ? toast.success(result.message) : toast.error(result.message);
+  }
+
+  // Portal registrations. These columns are the ones the table shows, so the
+  // file matches what was on screen, filters included.
+  const rows = filteredPortalData.map((reg) => ({
+  Name: reg.user?.name ?? "",
+  Email: reg.user?.email ?? "",
+  Phone: reg.phone || "",
+  Event: reg.event?.title || "",
+  Registered: formatDate(reg.createdAt),
+  Status: reg.status || "",
+  Payment: reg.paymentService || "None",
+  }));
+
+  const result = exportToCsv({
+  rows,
+  columns: [
+  { key: "Name", label: "Name" },
+  { key: "Email", label: "Email" },
+  { key: "Phone", label: "Phone" },
+  { key: "Event", label: "Event" },
+  { key: "Registered", label: "Registered" },
+  { key: "Status", label: "Status" },
+  { key: "Payment", label: "Payment" },
+  ],
+  filename: stampedFilename(base),
+  emptyMessage: "No participants match the current search.",
+  });
+
+  return result.ok ? toast.success(result.message) : toast.error(result.message);
+  };
+
   if (loading && !registrations.length) {
   return (
   <div className="min-h-screen flex bg-paper">
@@ -196,7 +255,7 @@ const ManageEventRegisterByUser = () => {
   </div>
 
   <div className="flex items-center gap-3">
-  <button className="flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-bold text-xs hover:bg-slate-50 transition-all shadow-sm">
+  <button onClick={handleExport} className="flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-bold text-xs hover:bg-slate-50 transition-all shadow-sm">
   <Download size={16} /> Export
   </button>
   {registrationMode === "google_form" && activeEvent?.googleSheetResponseLink && (
