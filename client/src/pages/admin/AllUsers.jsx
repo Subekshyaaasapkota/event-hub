@@ -1,7 +1,8 @@
 // src/pages/admin/AllUsers.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
+import DetailDialog from "../../components/common/DetailDialog";
 import {
   Users,
   Search,
@@ -11,471 +12,530 @@ import {
   AlertCircle,
   Building,
   Map,
-  Link,
-  Code,
   Info,
   X,
-  ChevronRight,
-  Fingerprint,
 } from "lucide-react";
 import useAdmin from "../../hooks/useAdmin";
 import { getImageUrl } from "../../utils/imageUrl";
+
+/**
+ * Roles come from the User model enum: Student, Club, Admin.
+ *
+ * Kept in one place because the page derives the same answer three times. It
+ * used to derive it twice with slightly different code, and a user with an
+ * empty roles array was counted as a student by the filter and by the count but
+ * shown by getRoleBadge, which tested includes() on the array without the
+ * Array.isArray guard. Anything that reads as Admin wins, so a user who is both
+ * a club officer and an admin is never filed as a club.
+ */
+const roleOf = (user) => {
+  const roles = Array.isArray(user?.roles) ? user.roles : [];
+  if (roles.includes("Admin")) return "admin";
+  if (roles.includes("Club")) return "club";
+  return "student";
+};
+
+const ROLE_LABEL = { admin: "Admin", club: "Club", student: "Student" };
+
+/**
+ * Role chips are tinted rather than the old purple/indigo/emerald on near-white,
+ * which put text at roughly 3:1 against its own background. These are all past
+ * 4.5:1 at the size used.
+ */
+const ROLE_STYLE = {
+  admin: "border-ink bg-ink text-paper",
+  club: "border-stone-300 bg-stone-100 text-stone-800",
+  student: "border-stone-200 bg-stone-50 text-stone-700",
+};
+
+const RoleBadge = ({ role }) => (
+  <span
+    className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[12px] font-medium leading-5 ${ROLE_STYLE[role]}`}
+  >
+    {ROLE_LABEL[role]}
+  </span>
+);
+
+/** Shown wherever the record genuinely has no value, rather than inventing one. */
+const NO_VALUE = "Not provided";
+
+/** Stable identity for the "no users yet" case, so memos do not thrash. */
+const EMPTY = [];
 
 const AdminAllUsers = () => {
   const { users, loading, error, fetchUsers, deleteUser } = useAdmin();
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [selectedUser, setSelectedUser] = useState(null); // For detailed view modal
+  const [selectedUser, setSelectedUser] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState({
-  isOpen: false,
-  title: "",
-  message: "",
-  onConfirm: null,
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: null,
   });
-
-  const VITE_BASE_API_URL =
-  import.meta.env.VITE_BASE_API_URL || "http://localhost:5000";
 
   useEffect(() => {
-  fetchUsers();
+    fetchUsers();
   }, [fetchUsers]);
 
-  const handleDeleteUser = (userId) => {
-  setConfirmDialog({
-  isOpen: true,
-  title: "Delete User",
-  message:
-  "Are you sure you want to delete this user? This action cannot be undone.",
-  onConfirm: async () => {
-  try {
-  await deleteUser(userId);
-  toast.success("User removed successfully.");
-  setConfirmDialog({ isOpen: false });
-  } catch (error) {
-  toast.error(error.message || "Failed to delete user.");
-  setConfirmDialog({ isOpen: false });
-  }
-  },
-  });
+  // useAdmin already falls back to [] when the slice has no users yet, but that
+  // fallback would make a fresh array identity on every render and defeat both
+  // memos below, so the empty case is pinned to a module-level constant.
+  const list = useMemo(() => users || EMPTY, [users]);
+
+  const handleDeleteUser = (user) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: `Delete ${user.name || "this account"}`,
+      // The server refuses when the account has registrations or still owns
+      // events and clubs, and it refuses to remove the last admin. Saying so up
+      // front is better than letting someone confirm and then be told no.
+      message:
+        "This removes the account permanently. It only works if the account has no registrations and does not own events or clubs, and it is refused for the last admin. Anything the account created will be left as it is.",
+      onConfirm: async () => {
+        try {
+          await deleteUser(user._id || user.id);
+          toast.success("User removed.");
+          // Close the detail sheet too, otherwise it keeps showing a record that
+          // no longer exists.
+          setSelectedUser(null);
+        } catch (err) {
+          toast.error(err.message || "Failed to delete user.");
+        } finally {
+          setConfirmDialog({ isOpen: false });
+        }
+      },
+    });
   };
 
-  const filteredUsers = (users || []).filter((user) => {
-  const searchStr = searchTerm.toLowerCase();
-  const matchesSearch =
-  user.name?.toLowerCase().includes(searchStr) ||
-  user.email?.toLowerCase().includes(searchStr) ||
-  user.college?.toLowerCase().includes(searchStr) ||
-  user.district?.toLowerCase().includes(searchStr);
-
-  let userRole = "student";
-  if (user.roles) {
-  if (Array.isArray(user.roles)) {
-  if (user.roles.includes("Admin")) userRole = "admin";
-  else if (user.roles.includes("Club")) userRole = "club";
-  }
-  }
-
-  const matchesRole = roleFilter === "all" || userRole === roleFilter;
-  return matchesSearch && matchesRole;
-  });
-
-  const getRoleBadge = (user) => {
-  let role = "student";
-  let label = "Student";
-
-  if (user.roles?.includes("Admin")) {
-  role = "admin";
-  label = "Admin";
-  } else if (user.roles?.includes("Club")) {
-  role = "club";
-  label = "Club";
-  }
-
-  const colors = {
-  admin: "bg-purple-50 text-purple-600 border-purple-100",
-  club: "bg-indigo-50 text-indigo-600 border-indigo-100",
-  student: "bg-emerald-50 text-emerald-600 border-emerald-100",
-  };
-
-  return (
-  <span
-  className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${colors[role]}`}
-  >
-  {label}
-  </span>
+  const counts = useMemo(
+    () => ({
+      all: list.length,
+      student: list.filter((u) => roleOf(u) === "student").length,
+      club: list.filter((u) => roleOf(u) === "club").length,
+      admin: list.filter((u) => roleOf(u) === "admin").length,
+    }),
+    [list],
   );
+
+  const filteredUsers = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+
+    return list.filter((user) => {
+      if (roleFilter !== "all" && roleOf(user) !== roleFilter) return false;
+      if (!query) return true;
+
+      // district is not on the User model. The old search matched on it, so
+      // typing a district always returned nothing and looked like the search
+      // was broken. Only fields that exist are searched now.
+      return [user.name, user.email, user.college].some((field) =>
+        field?.toLowerCase().includes(query),
+      );
+    });
+  }, [list, roleFilter, searchTerm]);
+
+  const joinedDate = (value) => {
+    if (!value) return NO_VALUE;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return NO_VALUE;
+    return parsed.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
   };
 
-  // Helper to get counts for filters
-  const getCount = (role) => {
-  if (!users) return 0;
-  if (role === "all") return users.length;
-  return users.filter((u) => {
-  if (role === "student")
-  return !u.roles?.includes("Admin") && !u.roles?.includes("Club");
-  if (role === "club") return u.roles?.includes("Club");
-  if (role === "admin") return u.roles?.includes("Admin");
-  return false;
-  }).length;
-  };
+  const activeUser = selectedUser
+    ? list.find((u) => (u._id || u.id) === (selectedUser._id || selectedUser.id)) ||
+      selectedUser
+    : null;
 
   return (
-  <div className="pb-10">
-  <div className="mb-10">
-  <h1 className="text-4xl font-black text-slate-800 mb-2 tracking-tighter">
-  User Directory
-  </h1>
-  <p className="text-slate-500 font-medium italic">
-  Oversee all members registered on the EventHub network.
-  </p>
+    <div className="pb-10">
+      <div className="mb-8">
+        <h1 className="text-[28px] font-semibold tracking-tight text-ink">
+          Users
+        </h1>
+        <p className="mt-1 text-[15px] leading-relaxed text-stone-600">
+          Everyone with an account on EventHub.
+        </p>
 
-  {error && (
-  <div className="mt-6 p-4 bg-red-50 border border-red-100 rounded-3xl text-red-500 text-sm flex items-center gap-3">
-  <AlertCircle size={18} />
-  <span className="font-bold">Sync Error:</span> {error}
-  </div>
-  )}
-  </div>
+        {error ? (
+          <div className="mt-5 flex items-start gap-2.5 rounded-[12px] bg-red-50 px-4 py-3 text-[14px] leading-relaxed text-red-700 ring-1 ring-red-100">
+            <AlertCircle size={17} className="mt-0.5 shrink-0" aria-hidden="true" />
+            <span>{error}</span>
+          </div>
+        ) : null}
+      </div>
 
-  {/* Filters Bar */}
-  <div className="flex flex-col lg:flex-row gap-4 mb-10">
-  <div className="flex-1 relative group">
-  <Search
-  className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"
-  size={20}
-  />
-  <input
-  type="text"
-  placeholder="Search by name, email, or college..."
-  value={searchTerm}
-  onChange={(e) => setSearchTerm(e.target.value)}
-  className="w-full pl-14 pr-6 py-4 rounded-[2rem] border-none bg-white shadow-sm focus:ring-4 focus:ring-indigo-100 outline-none transition-all font-medium text-slate-700"
-  />
-  </div>
+      {/* Filters */}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-600"
+            size={17}
+            aria-hidden="true"
+          />
+          <input
+            type="search"
+            placeholder="Search name, email, or college"
+            aria-label="Search users by name, email, or college"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="h-11 w-full rounded-[12px] border border-hairline bg-white pl-10 pr-3 text-[15px] text-ink outline-none transition-shadow placeholder:text-stone-400 focus-visible:ring-2 focus-visible:ring-ink/25"
+          />
+        </div>
 
-  <div className="flex bg-white p-2 rounded-[2rem] shadow-sm border border-slate-50">
-  {[
-  { id: "all", label: "ALL" },
-  { id: "student", label: "STUDENT" },
-  { id: "club", label: "CLUB" },
-  { id: "admin", label: "ADMIN" },
-  ].map((r) => (
-  <button
-  key={r.id}
-  onClick={() => setRoleFilter(r.id)}
-  className={`px-6 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${
-  roleFilter === r.id
-  ? "bg-slate-900 text-white shadow-lg"
-  : "text-slate-400 hover:text-slate-600"
-  }`}
-  >
-  {r.label}
-  <span
-  className={`px-2 py-0.5 rounded-lg text-[9px] ${roleFilter === r.id ? "bg-white/20 text-white" : "bg-slate-100 text-slate-400"}`}
-  >
-  {getCount(r.id)}
-  </span>
-  </button>
-  ))}
-  </div>
-  </div>
+        {/* Segmented control. A radiogroup rather than four buttons, so the
+            count and the label are announced together and arrow keys work. */}
+        <div
+          role="radiogroup"
+          aria-label="Filter users by role"
+          className="flex shrink-0 overflow-hidden rounded-[12px] border border-hairline bg-white"
+        >
+          {[
+            { id: "all", label: "All" },
+            { id: "student", label: "Students" },
+            { id: "club", label: "Clubs" },
+            { id: "admin", label: "Admins" },
+          ].map((r) => {
+            const active = roleFilter === r.id;
+            return (
+              <button
+                key={r.id}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => setRoleFilter(r.id)}
+                className={`min-h-[44px] px-3 text-[14px] transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink/40 ${
+                  active
+                    ? "bg-ink font-medium text-paper"
+                    : "text-stone-600 hover:bg-hairline/50"
+                }`}
+              >
+                {r.label}
+                <span
+                  className={`ml-1.5 text-[13px] tabular-nums ${
+                    active ? "text-paper/75" : "text-stone-500"
+                  }`}
+                >
+                  {counts[r.id]}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-  {/* Main Table Container */}
-  <div className="bg-white rounded-[3.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
-  <div className="overflow-x-auto">
-  <table className="w-full text-left">
-  <thead>
-  <tr className="bg-slate-50/50 border-b border-slate-100">
-  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
-  Identity
-  </th>
-  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
-  Contact Info
-  </th>
-  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
-  College & District
-  </th>
-  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
-  Role & Skills
-  </th>
-  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 text-right">
-  Actions
-  </th>
-  </tr>
-  </thead>
-  <tbody className="divide-y divide-slate-50">
-  {loading ? (
-  Array(5)
-  .fill(0)
-  .map((_, i) => (
-  <tr key={i} className="animate-pulse">
-  <td
-  colSpan="5"
-  className="px-8 py-8 h-20 bg-slate-50/30"
-  ></td>
-  </tr>
-  ))
-  ) : filteredUsers.length === 0 ? (
-  <tr>
-  <td colSpan="5" className="px-8 py-32 text-center">
-  <Users
-  className="mx-auto mb-6 text-slate-200"
-  size={80}
-  strokeWidth={1}
-  />
-  <p className="text-xl font-black text-slate-300 tracking-tighter uppercase italic">
-  No users found
-  </p>
-  </td>
-  </tr>
-  ) : (
-  filteredUsers.map((u) => (
-  <tr
-  key={u.id || u._id}
-  className="hover:bg-indigo-50/30 transition-colors group"
-  >
-  <td className="px-8 py-6">
-  <div className="flex items-center gap-4">
-  <div className="w-14 h-14 rounded-3xl bg-indigo-600 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-indigo-100 overflow-hidden border-2 border-white">
-  {u.profilePicture ? (
-  <img
-  src={getImageUrl(u.profilePicture)}
-  alt=""
-  className="w-full h-full object-cover"
-  />
-  ) : (
-  u.name?.charAt(0).toUpperCase()
-  )}
-  </div>
-  <div>
-  <span className="font-black text-slate-800 tracking-tight block text-lg">
-  {u.name}
-  </span>
-  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-md mt-1 inline-block">
-  ID: {u._id?.slice(-8) || "GEN-NODE"}
-  </span>
-  </div>
-  </div>
-  </td>
-  <td className="px-8 py-6">
-  <div className="flex flex-col gap-1">
-  <span className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-  <Mail size={14} className="text-indigo-400" />{""}
-  {u.email}
-  </span>
-  <span className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-  <Calendar size={12} /> Joined{""}
-  {u.createdAt
-  ? new Date(u.createdAt).toLocaleDateString()
-  : "N/A"}
-  </span>
-  </div>
-  </td>
-  <td className="px-8 py-6">
-  <div className="flex flex-col gap-1">
-  <span className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-  <Building size={14} className="text-slate-400" />{""}
-  {u.college || "N/A"}
-  </span>
-  <span className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-  <Map size={12} /> {u.district || "Global"}
-  </span>
-  </div>
-  </td>
-  <td className="px-8 py-6">
-  <div className="flex flex-col items-start gap-2">
-  {getRoleBadge(u)}
-  {u.interestedSkills?.length > 0 && (
-  <div className="flex gap-1 flex-wrap mt-1">
-  {u.interestedSkills.slice(0, 2).map((s, idx) => (
-  <span
-  key={idx}
-  className="text-[8px] bg-slate-900 text-white font-black px-1.5 py-0.5 rounded-xs uppercase"
-  >
-  {s}
-  </span>
-  ))}
-  {u.interestedSkills.length > 2 && (
-  <span className="text-[8px] text-slate-400">
-  +{u.interestedSkills.length - 2}
-  </span>
-  )}
-  </div>
-  )}
-  </div>
-  </td>
-  <td className="px-8 py-6 text-right">
-  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-  <button
-  onClick={() => setSelectedUser(u)}
-  className="p-3 bg-white text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl border border-slate-100 transition-all shadow-sm"
-  title="View Profile"
-  >
-  <Info size={18} />
-  </button>
-  <button
-  onClick={() => handleDeleteUser(u.id || u._id)}
-  className="p-3 bg-white text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl border border-slate-100 transition-all shadow-sm"
-  title="Delete User"
-  >
-  <Trash2 size={18} />
-  </button>
-  </div>
-  </td>
-  </tr>
-  ))
-  )}
-  </tbody>
-  </table>
-  </div>
+      {/* Table on wide screens, stacked cards below it. A five-column table
+          cannot be read on a phone without horizontal scrolling, and the action
+          buttons were in the last column, so they sat off screen. */}
+      <div className="overflow-hidden rounded-[16px] border border-hairline bg-white">
+        <div className="hidden md:block">
+          <table className="w-full text-left">
+            <caption className="sr-only">
+              Registered users, with role and contact details
+            </caption>
+            <thead>
+              <tr className="border-b border-hairline bg-paper/60">
+                {["User", "Contact", "College", "Role", ""].map((h, i) => (
+                  <th
+                    key={h || i}
+                    scope="col"
+                    className={`px-5 py-3 text-[13px] font-medium text-stone-600 ${
+                      i === 4 ? "w-24 text-right" : ""
+                    }`}
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-hairline">
+              {loading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i}>
+                      <td colSpan={5} className="px-5 py-6">
+                        <div className="h-4 w-full max-w-xs animate-pulse rounded bg-hairline/70" />
+                      </td>
+                    </tr>
+                  ))
+                : filteredUsers.map((u) => {
+                    const id = u._id || u.id;
+                    return (
+                      <tr key={id} className="transition-colors hover:bg-paper/60">
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-3">
+                            <Avatar user={u} />
+                            <div className="min-w-0">
+                              <span className="block truncate text-[15px] font-medium text-ink">
+                                {u.name || "Unnamed user"}
+                              </span>
+                              <span className="block truncate font-mono text-[12px] text-stone-600">
+                                {id}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3 text-[14px] text-stone-600">
+                          <span className="flex items-center gap-1.5">
+                            <Mail size={14} aria-hidden="true" className="shrink-0 text-stone-400" />
+                            <span className="truncate">{u.email || NO_VALUE}</span>
+                          </span>
+                          <span className="mt-0.5 flex items-center gap-1.5 text-[13px]">
+                            <Calendar size={13} aria-hidden="true" className="shrink-0 text-stone-400" />
+                            {joinedDate(u.createdAt)}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-[14px] text-ink">
+                          <span className="flex items-center gap-1.5">
+                            <Building size={14} aria-hidden="true" className="shrink-0 text-stone-400" />
+                            {u.college || NO_VALUE}
+                          </span>
+                          {u.district ? (
+                            <span className="mt-0.5 flex items-center gap-1.5 text-[13px] text-stone-600">
+                              <Map size={13} aria-hidden="true" className="shrink-0" />
+                              {u.district}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="px-5 py-3">
+                          <RoleBadge role={roleOf(u)} />
+                        </td>
+                        <td className="px-5 py-3">
+                          {/* Always visible, not on hover. The old row used
+                              opacity-0 group-hover:opacity-100, so on touch there
+                              was no way to reach either button, and while
+                              tabbing through the table focus landed on
+                              something invisible. */}
+                          <div className="flex justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedUser(u)}
+                              className="grid h-9 w-9 place-items-center rounded-[10px] text-stone-600 transition-colors hover:bg-hairline/60 active:bg-hairline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                            >
+                              <Info size={17} aria-hidden="true" />
+                              <span className="sr-only">
+                                View details for {u.name || "user"}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteUser(u)}
+                              className="grid h-9 w-9 place-items-center rounded-[10px] text-red-700 transition-colors hover:bg-red-50 active:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40"
+                            >
+                              <Trash2 size={17} aria-hidden="true" />
+                              <span className="sr-only">
+                                Delete {u.name || "user"}
+                              </span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+            </tbody>
+          </table>
+        </div>
 
-  {/* Lighter Footer Stats */}
-  <div className="bg-slate-50/80 backdrop-blur-sm p-8 flex flex-col md:flex-row justify-between items-center gap-6 text-[10px] font-black uppercase tracking-[0.2em] border-t border-slate-100">
-  <div className="flex items-center gap-4">
-  <div className="p-3 bg-white rounded-2xl shadow-sm border border-slate-100">
-  <Users size={16} className="text-indigo-600" />
-  </div>
-  <div>
-  <span className="text-slate-400 block mb-0.5">Total Members</span>
-  <span className="text-lg text-slate-800 leading-none tracking-tighter font-black">
-  {filteredUsers.length}
-  </span>
-  </div>
-  </div>
+        {/* Phone layout */}
+        <ul className="divide-y divide-hairline md:hidden">
+          {loading
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <li key={i} className="px-4 py-4">
+                  <div className="h-10 w-2/3 animate-pulse rounded bg-hairline/70" />
+                </li>
+              ))
+            : filteredUsers.map((u) => (
+                <li key={u._id || u.id} className="px-4 py-3">
+                  <div className="flex items-start gap-3">
+                    <Avatar user={u} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="truncate text-[15px] font-medium text-ink">
+                          {u.name || "Unnamed user"}
+                        </span>
+                        <RoleBadge role={roleOf(u)} />
+                      </div>
+                      <span className="mt-0.5 block truncate text-[14px] text-stone-600">
+                        {u.email || NO_VALUE}
+                      </span>
+                      {u.college ? (
+                        <span className="mt-0.5 block truncate text-[13px] text-stone-600">
+                          {u.college}
+                        </span>
+                      ) : null}
+                      <span className="mt-0.5 block text-[13px] text-stone-600">
+                        Joined {joinedDate(u.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedUser(u)}
+                      className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-[10px] border border-hairline text-[14px] font-medium text-ink transition-colors active:bg-hairline/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                    >
+                      <Info size={16} aria-hidden="true" />
+                      Details
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteUser(u)}
+                      className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-[10px] border border-red-200 text-[14px] font-medium text-red-600 transition-colors active:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40"
+                    >
+                      <Trash2 size={16} aria-hidden="true" />
+                      Delete
+                    </button>
+                  </div>
+                </li>
+              ))}
+        </ul>
 
-  <div className="flex gap-8 bg-white px-8 py-4 rounded-[2rem] border border-slate-100 shadow-sm">
-  <span className="flex items-center gap-2 group">
-  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-  <span className="text-slate-600">
-  Students{""}
-  <b className="text-slate-900 ml-1">{getCount("student")}</b>
-  </span>
-  </span>
-  <span className="flex items-center gap-2">
-  <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]"></div>
-  <span className="text-slate-600">
-  Clubs <b className="text-slate-900 ml-1">{getCount("club")}</b>
-  </span>
-  </span>
-  <span className="flex items-center gap-2">
-  <div className="w-2.5 h-2.5 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]"></div>
-  <span className="text-slate-600">
-  Admins{""}
-  <b className="text-slate-900 ml-1">{getCount("admin")}</b>
-  </span>
-  </span>
-  </div>
-  </div>
-  </div>
+        {!loading && filteredUsers.length === 0 ? (
+          <div className="px-6 py-16 text-center">
+            <Users
+              className="mx-auto mb-4 text-stone-300"
+              size={44}
+              strokeWidth={1.25}
+              aria-hidden="true"
+            />
+            <p className="text-[15px] text-stone-600">
+              {list.length === 0
+                ? "No users have registered yet."
+                : "No users match this search."}
+            </p>
+          </div>
+        ) : null}
+      </div>
 
-  {/* User Details Modal */}
-  {selectedUser && (
-  <div
-  className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex items-center justify-center p-6"
-  onClick={() => setSelectedUser(null)}
-  >
-  <div
-  className="bg-white rounded-[4rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300"
-  onClick={(e) => e.stopPropagation()}
-  >
-  <div className="h-48 bg-linear-to-br from-indigo-600 to-purple-800 p-10 flex items-end relative">
-  <button
-  onClick={() => setSelectedUser(null)}
-  className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors bg-white/10 p-2 rounded-full backdrop-blur-md"
-  >
-  <X size={24} />
-  </button>
-  <div className="w-32 h-32 rounded-[2.5rem] bg-white absolute -bottom-16 left-12 p-1.5 shadow-xl">
-  <div className="w-full h-full rounded-[2rem] bg-indigo-100 flex items-center justify-center font-black text-4xl text-indigo-600 overflow-hidden">
-  {selectedUser.profilePicture ? (
-<img
-      src={getImageUrl(selectedUser.profilePicture)}
-      alt={`${selectedUser.name || "User"} profile picture`}
-      className="w-full h-full object-cover"
+      <DetailDialog
+        isOpen={Boolean(activeUser)}
+        onClose={() => setSelectedUser(null)}
+        title={activeUser?.name || "Unnamed user"}
+        subtitle={activeUser?.email || NO_VALUE}
+        header={<Avatar user={activeUser} size="lg" />}
+        footer={
+          activeUser ? (
+            <button
+              type="button"
+              onClick={() => handleDeleteUser(activeUser)}
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-[12px] bg-red-600 text-[15px] font-medium text-white transition-colors hover:bg-red-700 active:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40 focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+            >
+              <Trash2 size={17} aria-hidden="true" />
+              Delete account
+            </button>
+          ) : null
+        }
+      >
+        {activeUser ? (
+          <div className="space-y-5">
+            <DetailRow label="Role">
+              <RoleBadge role={roleOf(activeUser)} />
+            </DetailRow>
+
+            <DetailRow label="Email">
+              {activeUser.email || NO_VALUE}
+            </DetailRow>
+
+            <DetailRow label="College">
+              {activeUser.college || NO_VALUE}
+            </DetailRow>
+
+            <DetailRow label="District">
+              {activeUser.district || NO_VALUE}
+            </DetailRow>
+
+            <DetailRow label="Joined">
+              {joinedDate(activeUser.createdAt)}
+            </DetailRow>
+
+            {/* "GEN-NODE" was invented. If the record has no id there is
+                nothing honest to show, so say so. */}
+            <DetailRow label="Account ID">
+              <span className="font-mono text-[13px]">
+                {activeUser._id || activeUser.id || NO_VALUE}
+              </span>
+            </DetailRow>
+
+            <DetailRow label="About">
+              <p className="whitespace-pre-wrap text-[14px] leading-relaxed text-stone-600">
+                {activeUser.bio || "No biography provided."}
+              </p>
+            </DetailRow>
+
+            <DetailRow label="Interested in">
+              {activeUser.interestedSkills?.length ? (
+                <ul className="flex flex-wrap gap-1.5">
+                  {activeUser.interestedSkills.map((skill, i) => (
+                    <li
+                      key={`${skill}-${i}`}
+                      className="rounded-full bg-hairline/70 px-2.5 py-1 text-[13px] text-ink"
+                    >
+                      {skill}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <span className="text-[14px] text-stone-600">
+                  Nothing listed yet.
+                </span>
+              )}
+            </DetailRow>
+
+            {/* The old detail sheet had no way to remove a user from inside it,
+                so an admin had to close it, then find the row again. */}
+            {activeUser.club?.name ? (
+              <DetailRow label="Club">
+                {activeUser.club.name}
+              </DetailRow>
+            ) : null}
+          </div>
+        ) : null}
+      </DetailDialog>
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ isOpen: false })}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText="Delete user"
+        type="danger"
       />
-  ) : (
-  selectedUser.name?.charAt(0).toUpperCase()
-  )}
-  </div>
-  </div>
-  </div>
-  <div className="pt-24 px-12 pb-12">
-  <div className="flex justify-between items-start mb-10">
-  <div>
-  <h2 className="text-3xl font-black text-slate-800 tracking-tighter flex items-center gap-4">
-  {selectedUser.name} {getRoleBadge(selectedUser)}
-  </h2>
-  <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-1">
-  {selectedUser.email}
-  </p>
-  </div>
-  </div>
-
-  <div className="space-y-8">
-  <div>
-  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-4 flex items-center gap-2">
-  <Fingerprint size={12} /> User Biography
-  </h4>
-  <p className="text-slate-600 font-medium italic bg-slate-50 p-6 rounded-3xl border border-dashed border-slate-200 leading-relaxed">
-  {selectedUser.bio || "No biography provided."}
-  </p>
-  </div>
-
-  <div className="grid grid-cols-2 gap-8">
-  <div>
-  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-3">
-  Skill Protocol
-  </h4>
-  <div className="flex flex-wrap gap-1.5">
-  {selectedUser.interestedSkills?.map((s, i) => (
-  <span
-  key={i}
-  className="bg-indigo-600 text-white text-[9px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider"
-  >
-  {s}
-  </span>
-  )) || (
-  <span className="text-xs text-slate-400 font-medium">
-  None Listed.
-  </span>
-  )}
-  </div>
-  </div>
-  <div>
-  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-3">
-  Institute Node
-  </h4>
-  <p className="text-sm font-black text-slate-800">
-  {selectedUser.college || "Independent"}
-  </p>
-  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-  {selectedUser.district || "Regional Hub"}
-  </p>
-  </div>
-  </div>
-  </div>
-
-  <button
-  onClick={() => setSelectedUser(null)}
-  className="mt-12 w-full py-5 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-[0.3em] text-[10px] hover:bg-indigo-600 transition-all flex items-center justify-center gap-3 shadow-lg shadow-indigo-100"
-  >
-  Close Detail View <ChevronRight size={14} />
-  </button>
-  </div>
-  </div>
-  </div>
-  )}
-
-  <ConfirmDialog
-  isOpen={confirmDialog.isOpen}
-  onClose={() => setConfirmDialog({ isOpen: false })}
-  onConfirm={confirmDialog.onConfirm}
-  title={confirmDialog.title}
-  message={confirmDialog.message}
-  type="danger"
-  />
-  </div>
+    </div>
   );
 };
+
+const Avatar = ({ user, size = "md" }) => {
+  const initials = user?.name?.trim()?.charAt(0).toUpperCase() || "?";
+  const dimensions = size === "lg" ? "h-14 w-14 text-[19px]" : "h-9 w-9 text-[15px]";
+
+  if (!user?.profilePicture) {
+    return (
+      <span
+        aria-hidden="true"
+        className={`grid shrink-0 place-items-center overflow-hidden rounded-full bg-stone-200 font-medium text-stone-700 ${dimensions}`}
+      >
+        {initials}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={getImageUrl(user.profilePicture)}
+      alt=""
+      className={`shrink-0 rounded-full object-cover ring-1 ring-hairline ${dimensions}`}
+    />
+  );
+};
+
+const DetailRow = ({ label, children }) => (
+  <div>
+    <dt className="text-[13px] font-medium text-stone-600">{label}</dt>
+    <dd className="mt-1 text-[15px] leading-relaxed text-ink">{children}</dd>
+  </div>
+);
 
 export default AdminAllUsers;

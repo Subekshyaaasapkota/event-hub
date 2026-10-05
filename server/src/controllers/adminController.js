@@ -15,12 +15,36 @@ const getAllUsers = async (req, res) => {
 
 const deleteUser = async (req, res) => {
   const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "That user id is not valid" });
+  }
+
   try {
-  const result = await adminService.deleteUser(id);
-  res.status(200).json(result);
+    const result = await adminService.deleteUser(id);
+    res.status(200).json(result);
   } catch (error) {
-  console.error("Error in deleteUser Controller:", error);
-  res.status(500).json({ message: error.message });
+    // The service refuses deliberately in several cases: a user with
+    // registrations, a user who still owns events or clubs, and the last admin.
+    // Those are conflicts, not server faults, and they arrived here as 500. The
+    // client treats a 500 as an unexpected failure, so the admin saw a red
+    // "something broke" message instead of the actual reason and had no way to
+    // tell it apart from a genuine outage. Refusals carry a 409 so the console
+    // can show what to do about it.
+    const isRefusal =
+      error.message?.includes("cannot be deleted") ||
+      error.message?.includes("still owns") ||
+      error.message?.includes("only admin account");
+
+    if (isRefusal) {
+      return res.status(409).json({ message: error.message });
+    }
+    if (error.message === "User not found") {
+      return res.status(404).json({ message: error.message });
+    }
+
+    console.error("Error in deleteUser Controller:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 
