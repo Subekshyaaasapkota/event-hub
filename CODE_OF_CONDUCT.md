@@ -54,12 +54,12 @@ an individual is officially representing the project in public spaces.
 ## Enforcement
 
 Instances of abusive, harassing or otherwise unacceptable behaviour may be
-reported to the maintainers through a private report on this repository's
-**Security** tab, or through the contact details in the repository profile.
+reported to the maintainer, **Subekshya Sapkota**, at
+`subekshyasapkota686@gmail.com`.
 
-Choose the Security tab only if the report is also a security problem. For
-anything else, a private message to a maintainer is the same destination and a
-clearer description of who to contact.
+If the report is also a security problem, use the Security tab of the
+repository instead, which is private by default. For everything else, email is
+the same destination and gives a clearer record of who to contact.
 
 All complaints will be reviewed and investigated promptly and fairly.
 

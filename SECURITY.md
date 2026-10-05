@@ -17,16 +17,17 @@ expecting a backport.
 
 **Do not open a public issue for a security problem.**
 
-Use GitHub's private reporting, which needs no email address and reaches the
-maintainers without making the report public:
+Report it to the maintainer, **Subekshya Sapkota**, at
+`subekshyasapkota686@gmail.com`. Email is the primary channel because it is
+private by default and reaches one person. Please put "security" in the subject
+so it is not mistaken for ordinary support.
+
+If you would rather not email, GitHub's private reporting needs no address and
+keeps the report inside the repository:
 
 1. Go to this repository on GitHub.
 2. Open the **Security** tab.
 3. Choose **Report a vulnerability**.
-
-If private reporting is not enabled for this repository, contact the maintainer
-directly through the details in the repository profile and ask for a private
-channel.
 
 ### What to include
 

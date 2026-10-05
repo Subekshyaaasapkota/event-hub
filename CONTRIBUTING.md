@@ -115,6 +115,12 @@ for anything visual. If you are fixing a bug, name the issue.
 - Bug or feature: open an issue using this repository's issue templates.
 - Security: [SECURITY.md](SECURITY.md), never a public issue.
 - Behaviour or conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+- Anything else: **Subekshya Sapkota**, `subekshyasapkota686@gmail.com`.
+
+## Maintainer
+
+**Subekshya Sapkota**, `subekshyasapkota686@gmail.com`. Questions about a pull
+request are welcome by email as well as on the thread.
 
 By taking part you agree to the [Code of Conduct](CODE_OF_CONDUCT.md), and
 contributions are accepted under the [ISC licence](LICENSE).

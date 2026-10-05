@@ -456,4 +456,6 @@ This project is licensed under the **ISC License** - see the [LICENSE](LICENSE) 
 
 ## Copyright
 
-© Arun Neupane and contributors. Licensed under the [ISC License](LICENSE).
+© Subekshya Sapkota and contributors. Licensed under the [ISC License](LICENSE).
+
+Maintainer: **Subekshya Sapkota**, [`subekshyasapkota686@gmail.com`](mailto:subekshyasapkota686@gmail.com)
