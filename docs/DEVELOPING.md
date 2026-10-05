@@ -370,16 +370,22 @@ mismatches after a schema change are therefore handled automatically.
 
 Worth knowing before you trust a part of this.
 
-- There are no tests of any kind. `npm test` in `server` is a placeholder that
-  exits 1. Verification has been lint, build, module compilation and manual
-  requests against a running server.
+- **Testing is limited to registration.** `npm test` in `server` runs 48 Vitest
+  tests covering the registration lifecycle, the seat model and the controller
+  boundary. Everything else is still unverified by automation: events, clubs,
+  admin, payments and the whole client are checked by lint, build, module
+  compilation and manual requests against a running server. The models are
+  mocked, so the suite never reaches a real database.
 - `client/scripts/render-check.mjs` renders every route through React's
   server renderer and reports which ones throw on mount. It is uncommitted
   scaffolding, and 30 of 31 routes pass. It runs no effects and makes no API
-  calls, so it catches render crashes and nothing else.
-- There is no visual regression baseline, so UI changes were reviewed by
-  reading rather than by comparing screenshots.
-- The production client bundle is one 1.3 MB chunk and Vite warns about it.
+  calls, so it catches render crashes and nothing else. `CreateEvents` throws on
+  a missing `deviceXDPI` during render.
+- **There is no automated visual regression.** A headless Chrome or Edge is
+  available on the machine, so screenshots can be captured and compared by eye,
+  but nothing does that automatically and nothing fails a build on a visual
+  change.
+- The production client bundle is one 1.27 MB chunk and Vite warns about it.
   There is no route level code splitting.
 - A club has both `status` and `isVerified`, which are redundant. Every current
   writer keeps them in step, but nothing enforces that, as noted above.

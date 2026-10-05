@@ -1,0 +1,58 @@
+name: Feature request
+description: Suggest something EventHub should be able to do
+title: "[Feature]: "
+labels:
+  - enhancement
+  - needs discussion
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please describe the problem rather than the solution. The solution is
+        usually easier to agree on once everyone agrees what is broken.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve
+      description: Describe the situation, not the feature.
+      placeholder: As a club I cannot tell who has not turned up to an event I posted.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like to happen
+      placeholder: A list of registered attendees with a checked in column.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you have considered
+      description: Including the reason you ruled them out.
+
+  - type: dropdown
+    id: role
+    attributes:
+      label: Who this affects
+      options:
+        - Students browsing events
+        - Students managing their registrations
+        - Club organizers
+        - Admins
+        - Everyone
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the open issues and discussions for this already.
+          required: true
+        - label: This is a security fix, which should not be a public feature request.
+          required: false

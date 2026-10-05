@@ -1,0 +1,80 @@
+name: Bug report
+description: Something in EventHub does not behave the way it says it should
+title: "[Bug]: "
+labels:
+  - bug
+  - needs triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. If this is a security problem, do not use this
+        form. Read SECURITY.md instead.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, and what the app did instead.
+      placeholder: I opened the event page and the register button did nothing.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+      placeholder: The register button should have opened the form.
+    validations:
+      required: true
+
+  - type: input
+    id: route
+    attributes:
+      label: Route or page
+      description: The address bar URL, or which page it was.
+      placeholder: /events
+    validations:
+      required: true
+
+  - type: dropdown
+    id: role
+    attributes:
+      label: Which view were you in
+      options:
+        - Public (not signed in)
+        - Student
+        - Club
+        - Admin
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: Chrome 141 on Windows 11
+
+  - type: input
+    id: viewport
+    attributes:
+      label: Window width, if it looks like a layout problem
+      description: Resize the window until the problem appears, then note the width.
+      placeholder: 820
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console or server log lines
+      description: Any error text. This is usually the fastest route to a fix.
+      render: text
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the open issues for this already.
+          required: true
+        - label: I read docs/DEVELOPING.md known gaps in case it is documented.
+          required: false

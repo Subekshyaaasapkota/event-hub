@@ -452,12 +452,15 @@ removed again and the counts re-checked afterwards.
 
 ### Known gaps
 
-- No formal automated test suite exists. `npm test` on the server is a
-  placeholder, and the checks above were run as one-off scripts. This is the
-  single biggest thing missing from the project.
+- **The automated suite covers registration only.** `npm test` on the server now
+  runs 48 Vitest tests over the registration lifecycle, the seat model and the
+  controller boundary, and the checks above were originally run as one-off
+  scripts. Everything listed in this report outside registration is still
+  unverified by automation. Coverage is the single biggest thing missing from
+  the project.
 - Khalti and eSewa payment flows cannot be fully exercised without live
   merchant credentials.
-- The production bundle is a single 1.3 MB chunk and emits a size warning.
+- The production bundle is a single 1.27 MB chunk and emits a size warning.
   Route level code splitting would fix it.
 - Some accounts in the database look like manual test signups rather than
   seeded data. They were left in place rather than deleted, because they may

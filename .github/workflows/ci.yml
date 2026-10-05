@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A new push to the same branch supersedes the run in flight.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    name: Server tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    strategy:
+      fail-fast: false
+      matrix:
+        # The lower bound is what the README promises. The upper bound is what
+        # the project is actually developed on, so both get exercised.
+        node: ['20', '24']
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # No MONGODB_URL is set on purpose. The suite mocks the Mongoose models,
+      # so a passing run must not be reaching a database. If it starts needing
+      # one, the tests have drifted and this job is where that shows up.
+      - name: Test
+        run: npm test
+        env:
+          NODE_ENV: test
+
+  client:
+    name: Client lint and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '24']
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      # Vite warns about the production chunk size and the warning is easy to
+      # lose in a wall of log output, so the number is captured and posted back
+      # onto the run rather than left to be noticed.
+      - name: Report bundle size
+        if: always()
+        run: |
+          if [ -f dist ]; then
+            echo "### Client bundle" >> "$GITHUB_STEP_SUMMARY"
+            du -sh dist | sed 's/^/- dist: /' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Build produced no dist directory." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  docs:
+    name: Documentation links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # The repository is full of relative links between the documents. A
+      # renamed or moved file would otherwise break them silently, because
+      # nothing renders a README on the server.
+      - name: Check every relative markdown link resolves
+        run: |
+          mapfile -t hits < <(grep -rnoE '\]\([^)]+\)' --include='*.md' . | sed 's|^\./||')
+          status=0
+          for hit in "${hits[@]}"; do
+            file="${hit%%:*}"
+            rest="${hit#*:}"
+            link="${rest#*:}"
+            link="${link#](}"
+            link="${link%)}"
+            target="${link%%#*}"
+            [ -z "$target" ] && continue
+            case "$target" in
+              http://*|https://*|mailto:*) continue ;;
+            esac
+            if [ ! -e "$(dirname "$file")/$target" ]; then
+              echo "broken: $file -> $link"
+              status=1
+            fi
+          done
+          exit $status
+
+      - name: Confirm the server has no tests placeholder left behind
+        run: |
+          if grep -q 'no test specified' server/package.json; then
+            echo "server/package.json still has the placeholder test script."
+            exit 1
+          fi

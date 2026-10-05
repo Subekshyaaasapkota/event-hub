@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Setup and installation help
+    url: https://github.com/Subekshyaaasapkota/event-hub/blob/main/README.md#installation
+    about: Installation, environment variables and the scripts table live in the README.
+  - name: How the application is built
+    url: https://github.com/Subekshyaaasapkota/event-hub/blob/main/docs/DEVELOPING.md
+    about: Architecture, data model, API surface and design conventions.
+  - name: How to use EventHub
+    url: https://github.com/Subekshyaaasapkota/event-hub/blob/main/docs/USING-EVENTHUB.md
+    about: Plain language guide for students and for people running events.
+  - name: Report a security vulnerability
+    url: https://github.com/Subekshyaaasapkota/event-hub/security/advisories/new
+    about: Do not file security problems as public issues. Use private reporting.

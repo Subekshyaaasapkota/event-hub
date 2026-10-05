@@ -4,6 +4,7 @@
 [![License: ISC](https://img.shields.io/badge/License-ISC-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-v20%2B-green)](https://nodejs.org/)
 [![MongoDB](https://img.shields.io/badge/Database-MongoDB-green?logo=mongodb)](https://www.mongodb.com/)
+[![CI](https://github.com/Subekshyaaasapkota/event-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/Subekshyaaasapkota/event-hub/actions/workflows/ci.yml)
 
 **EventHub** is a centralized event discovery and management platform for Nepal's IT community. It connects students with verified technical opportunities while helping organizations efficiently manage and promote their events.
 
@@ -135,9 +136,8 @@ EventHub/
 #### 1. Clone the repository
 
 ```bash
-# Replace with your own fork or clone URL
-git clone https://github.com/yourusername/EventHub.git
-cd EventHub
+git clone https://github.com/Subekshyaaasapkota/event-hub.git
+cd event-hub
 ```
 
 #### 2. Backend (must be started first)
@@ -418,9 +418,11 @@ node src/scripts/generateEventPosters.js   # Upload demo posters to Cloudinary
 node src/scripts/syncIndexes.js            # Create the MongoDB indexes
 ```
 
-> There is no automated test suite on either side, so `npm test` is not
-> available. `npm run lint` and `npm run build` in `client/` are the only
-> automated checks the project has.
+> The server has an automated suite covering the registration rules. Run
+> `npm test` in `server/` for 48 Vitest tests; it mocks the Mongoose models, so
+> it never reaches a real database. The client has no test suite yet, so
+> `npm run lint` and `npm run build` in `client/` are the only automated checks
+> on that side. Continuous integration runs all three.
 
 ## Screenshots
 
@@ -434,7 +436,21 @@ node src/scripts/syncIndexes.js            # Create the MongoDB indexes
 | --- | --- | --- | --- |
 | ![Old events page](./client/public/screenshots/1.jpeg) | ![Old registration flow](./client/public/screenshots/2.jpeg) | ![Old dashboard](./client/public/screenshots/3.jpeg) | ![Old club portal](./client/public/screenshots/4.jpeg) |
 
-##  License
+## Contributing and governance
+
+| Document | What it covers |
+| --- | --- |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Setup, the commands that gate a pull request, and the conventions |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | What is expected of everyone taking part |
+| [SECURITY.md](SECURITY.md) | How to report a vulnerability privately, and known limitations |
+| [SUPPORT.md](SUPPORT.md) | Where to ask, and what not to file here |
+| [CHANGELOG.md](CHANGELOG.md) | Notable changes, and the fixes behind them |
+| [docs/DEVELOPING.md](docs/DEVELOPING.md) | Architecture, data model, API surface and design conventions |
+
+Continuous integration runs the server test suite plus client lint and build on
+every push and pull request against Node 20 and 24.
+
+## License
 
 This project is licensed under the **ISC License** - see the [LICENSE](LICENSE) file for details.
 
