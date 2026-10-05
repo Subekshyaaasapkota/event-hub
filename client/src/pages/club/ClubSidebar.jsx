@@ -73,6 +73,11 @@ const ClubSidebar = () => {
       extraSection={upcomingSection}
       backLabel="Portal view"
       onSignOut={handleSignOut}
+      /*  The club pages render this sidebar with no sticky header above it, so
+          the mobile bar sticks to the top. Only ClubDashboard and
+          ManageEventDetails add an h-16 header, and the bar has to clear
+          whatever is actually above it. */
+      offsetClassName="top-0"
     />
   );
 };

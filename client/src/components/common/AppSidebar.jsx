@@ -13,6 +13,12 @@ import ConfirmDialog from "./ConfirmDialog";
  * Layout: a persistent rail from lg up, and a horizontally scrolling row of
  * pills below it. The old version was a fixed 256px column at every width,
  * which on a phone left the page roughly 40% wide.
+ *
+ * offsetClassName is where the mobile bar sticks. It is not a constant because
+ * only two of the layouts that render this sidebar have a 64px sticky header
+ * above it. It was hardcoded to top-16, so on the club pages with no header the
+ * bar stuck 64px down and left an empty band above itself. Pass the height of
+ * whatever is stacked above, or top-0 when there is nothing.
  */
 
 const rowBase =
@@ -44,6 +50,7 @@ const AppSidebar = ({
   backLabel = "Back to portal",
   onSignOut,
   signOutLabel = "Sign out",
+  offsetClassName = "top-0",
 }) => {
   const location = useLocation();
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
@@ -129,29 +136,72 @@ const AppSidebar = ({
       </aside>
 
       {/* Mobile: scrollable pill row instead of a rail that steals the width */}
-      <nav
-        aria-label={title}
-        className="sticky top-16 z-40 border-b border-hairline bg-paper/90 backdrop-blur-md lg:hidden"
+      <div
+        className={`sticky ${offsetClassName} z-40 border-b border-hairline bg-paper/90 backdrop-blur-md lg:hidden`}
       >
-        <ul className="flex gap-2 overflow-x-auto px-4 py-3">
-          {items.map((item) => {
-            const active = location.pathname === item.to;
-            const Icon = item.icon;
-            return (
-              <li key={item.to} className="shrink-0">
-                <Link
-                  to={item.to}
-                  aria-current={active ? "page" : undefined}
-                  className={pillLink(active)}
-                >
-                  {Icon ? <Icon size={16} aria-hidden="true" className="shrink-0" /> : null}
-                  <span>{item.label}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+        <nav aria-label={title}>
+          <ul className="flex gap-2 overflow-x-auto px-4 py-3">
+            {items.map((item) => {
+              const active = location.pathname === item.to;
+              const Icon = item.icon;
+              return (
+                <li key={item.to} className="shrink-0">
+                  <Link
+                    to={item.to}
+                    aria-current={active ? "page" : undefined}
+                    className={pillLink(active)}
+                  >
+                    {Icon ? (
+                      <Icon size={16} aria-hidden="true" className="shrink-0" />
+                    ) : null}
+                    <span>{item.label}</span>
+                    {/*  The rail renders a count beside each item and the pill row
+                        did not, so a pending-queue badge or a registration count
+                        was invisible on exactly the screens where someone is
+                        triaging. */}
+                    {item.badge ? (
+                      <span
+                        className={`rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums ${
+                          active
+                            ? "bg-white/20 text-paper"
+                            : "bg-stone-100 text-stone-600"
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    ) : null}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        {/*  Back and sign out. These were only ever in the rail, which is
+            display:none below lg, so on a phone neither console offered a way
+            out of a signed-in session at all. Kept out of the scrolling pill row
+            so they cannot scroll away and get lost. */}
+        <div className="flex items-center gap-2 border-t border-hairline px-4 py-2">
+          <Link
+            to={backTo}
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-[10px] px-2 text-[14px] font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+          >
+            <ArrowLeft size={16} aria-hidden="true" className="shrink-0" />
+            {backLabel}
+          </Link>
+
+          {onSignOut ? (
+            <button
+              type="button"
+              onClick={() => setConfirmingSignOut(true)}
+              className="ml-auto inline-flex min-h-[44px] items-center gap-2 rounded-[10px] px-2 text-[14px] font-medium text-red-700 transition-colors hover:bg-red-50 hover:text-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40"
+            >
+              <LogOut size={16} aria-hidden="true" className="shrink-0" />
+              {signOutLabel}
+            </button>
+          ) : null}
+        </div>
+      </div>
 
       <ConfirmDialog
         isOpen={confirmingSignOut}

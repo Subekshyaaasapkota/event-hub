@@ -29,7 +29,7 @@ const AdminHome = () => {
 
   return (
     <div className="min-h-screen flex bg-paper">
-      <SideBar />
+      <SideBar offsetClassName="top-16" />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-hairline bg-paper/90 px-4 backdrop-blur-md sm:px-6">

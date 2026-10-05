@@ -46,6 +46,7 @@ const UserLayout = () => {
         items={NAV_ITEMS}
         backLabel="Portal view"
         onSignOut={logout}
+        offsetClassName="top-16"
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
