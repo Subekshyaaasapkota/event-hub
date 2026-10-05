@@ -7,6 +7,7 @@ import {
   adminApproveClub,
   rejectClubAdmin,
   deleteUserAdmin,
+  deleteAdminEvent,
   fetchAllRegistrations,
 } from "../redux/admin/adminAction.js";
 import { useDispatch, useSelector } from "react-redux";
@@ -63,10 +64,21 @@ const useAdmin = () => {
   );
 
   //  Delete User
+  //  Returns the dispatch promise, matching deleteEvent below. Without it this
+  //  returned undefined, so a caller that awaited it could not tell a completed
+  //  delete from a rejected one and reported success either way.
   const deleteUser = useCallback(
-  (id) => {
-  dispatch(deleteUserAdmin(id));
-  },
+  (id) => dispatch(deleteUserAdmin(id)).unwrap(),
+  [dispatch],
+  );
+
+//  Delete Event
+  //  Returns the promise from unwrap so a caller can tell success from failure.
+  //  The console shows a confirmation before deleting, and it has to be able to
+  //  report the server refusing rather than assuming the row is gone. The event
+  //  list drops the row in the slice, so there is no refetch here.
+  const deleteEvent = useCallback(
+  (eventId) => dispatch(deleteAdminEvent(eventId)).unwrap(),
   [dispatch],
   );
 
@@ -76,13 +88,14 @@ const useAdmin = () => {
   }, [dispatch]);
 
   return {
-  fetchEvents,
-  fetchUsers,
-  fetchClubs,
-  approveClub,
-  rejectClub,
-  deleteUser,
-  fetchRegistrations,
+    fetchEvents,
+    fetchUsers,
+    fetchClubs,
+    approveClub,
+    rejectClub,
+    deleteUser,
+    deleteEvent,
+    fetchRegistrations,
   users: adminState.users || [],
   registrations: adminState.registrations || [],
   loading: adminState.loading,

@@ -31,12 +31,10 @@ export const fetchAdminClubs = createAsyncThunk(
   "admin/fetchClubs",
   async (_, { rejectWithValue }) => {
   try {
-  const clubs = await adminService.getAllClubs();
-  console.log("Fetched clubs in action:", clubs); // Debug log
-  return clubs;
+const clubs = await adminService.getAllClubs();
+    return clubs;
   } catch (error) {
-  console.error("Error fetching clubs:", error);
-  return rejectWithValue(error?.response?.data?.message || error.message);
+    return rejectWithValue(error?.response?.data?.message || error.message);
   }
   },
 );
@@ -77,6 +75,21 @@ export const deleteUserAdmin = createAsyncThunk(
   return userId;
   } catch (error) {
   return rejectWithValue(error.message);
+  }
+  },
+);
+
+//  Delete Event
+//  Removes the row locally rather than refetching the whole list, because the
+//  admin list is already loaded and this is a single record.
+export const deleteAdminEvent = createAsyncThunk(
+  "admin/deleteEvent",
+  async (eventId, { rejectWithValue }) => {
+  try {
+    await adminService.deleteEvent(eventId);
+    return eventId;
+  } catch (error) {
+    return rejectWithValue(error.message);
   }
   },
 );

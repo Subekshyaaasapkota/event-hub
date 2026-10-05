@@ -5,6 +5,7 @@ import roleBasedAuth from "../middlewares/roleBasedAuth.js";
 import {
   getAllUsers,
   deleteUser,
+  deleteEvent,
   getAllRegistrations,
 } from "../controllers/adminController.js";
 import {
@@ -30,6 +31,16 @@ router.get("/users", [auth, roleBasedAuth("Admin")], getAllUsers);
  * @access Private (Admin only)
  */
 router.delete("/users/:id", [auth, roleBasedAuth("Admin")], deleteUser);
+
+/**
+ * @desc Delete an event
+ * @route DELETE /api/admin/events/:id
+ * @access Private (Admin only)
+ *
+ * Refuses with 409 when the event has registrations, since deleting it would
+ * leave those rows pointing at an event that no longer exists.
+ */
+router.delete("/events/:id", [auth, roleBasedAuth("Admin")], deleteEvent);
 
 /**
  * @desc Get all registrations across all events

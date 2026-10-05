@@ -61,8 +61,26 @@ const adminService = {
   }
   },
 
-  getAllRegistrations: async () => {
-  try {
+  /**
+   * Deletes an event as an admin.
+   *
+   * The server answers 409 when the event has registrations, and the message it
+   * sends is written for the person reading it, so it is passed straight
+   * through instead of being replaced by a generic failure.
+   */
+  deleteEvent: async (eventId) => {
+    try {
+      const response = await api.delete(`/api/admin/events/${eventId}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.message || "Failed to delete event",
+      );
+    }
+  },
+
+getAllRegistrations: async () => {
+    try {
   const response = await api.get("/api/admin/registrations");
   return response.data;
   } catch (error) {

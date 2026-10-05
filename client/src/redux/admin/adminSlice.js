@@ -7,6 +7,7 @@ import {
   adminApproveClub,
   rejectClubAdmin,
   deleteUserAdmin,
+  deleteAdminEvent,
   fetchAllRegistrations,
 } from "./adminAction.js";
 
@@ -35,6 +36,12 @@ const adminSlice = createSlice({
   .addCase(fetchAdminEvents.rejected, (state, action) => {
   state.loading = false;
   state.error = action.payload;
+  })
+
+  // Delete Event. Filtered out of the list the admin is looking at rather than
+  // refetching, so the row disappears the moment the server confirms.
+  .addCase(deleteAdminEvent.fulfilled, (state, action) => {
+  state.events = state.events.filter((e) => e._id !== action.payload);
   })
 
   // Fetch Users

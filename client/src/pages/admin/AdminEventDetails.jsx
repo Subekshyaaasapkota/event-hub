@@ -171,6 +171,9 @@ const AdminEventDetails = () => {
         try {
           await deleteEvent(id);
           toast.success("Event deleted.");
+          // Only leave once the server has confirmed. On a refusal the admin
+          // stays on the page with the event still there, which is what they
+          // need in order to read the reason.
           navigate("/admin/events");
         } catch (err) {
           toast.error(err.message || "Could not delete the event.");
