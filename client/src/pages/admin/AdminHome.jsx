@@ -2,59 +2,49 @@
 import React from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import SideBar from "../../components/admin/SideBar";
+import { getAdminPageTitle } from "../../components/admin/adminNav";
 
-const getPageTitle = (pathname) => {
-  if (pathname.includes("verification")) return "Club Verification";
-  const last = pathname.split("/").filter(Boolean).pop();
-  if (!last || last === "dashboard") return "Central Oversight";
-  const map = { clubs: "All Clubs", users: "All Users", events: "All Events" };
-  return (
-  map[last] ??
-  last
-  .split("-")
-  .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-  .join("")
-  );
-};
-
+/**
+ * Layout for the seven admin routes.
+ *
+ * This was the one shell in the app still wearing the old look: a slate
+ * background, an indigo breadcrumb set in 10px uppercase, a pulsing green dot
+ * labelled "Secure", and a footer reading "Terminal Status: Encrypted &
+ * Secure". None of that was connected to anything. A badge that claims the
+ * connection is secure cannot tell an admin anything true, and a permanently
+ * animated dot next to the word "Secure" is decoration that costs a repaint on
+ * every frame for a reassurance that is not earned.
+ *
+ * It now uses the same shell as the student view, so the admin console reads
+ * as part of the same product as /profile and /dashboard: warm paper, ink
+ * text, one border colour, and an h-16 header. The height is not cosmetic. The
+ * mobile pill row inside AppSidebar is sticky at top-16, so a header of any
+ * other height leaves a gap or slides underneath it.
+ *
+ * The page title comes from adminNav rather than from the URL, which is what
+ * stopped a Mongo id being rendered as a heading on the event detail pages.
+ */
 const AdminHome = () => {
-  const location = useLocation();
-  const title = getPageTitle(location.pathname);
+  const { pathname } = useLocation();
 
   return (
-  <div className="flex min-h-screen bg-slate-50">
-  <SideBar />
+    <div className="min-h-screen flex bg-paper">
+      <SideBar />
 
-  <div className="flex-1 flex flex-col h-screen overflow-y-auto">
-  {/* Top bar */}
-  <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 py-4 flex items-center justify-between">
-  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
-  <span className="text-slate-400">Root</span>
-  <span className="text-slate-300">/</span>
-  <span className="text-indigo-500">{title}</span>
-  </div>
-  <div className="flex items-center gap-1.5">
-  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-  Secure
-  </span>
-  </div>
-  </header>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-hairline bg-paper/90 px-4 backdrop-blur-md sm:px-6">
+          <h1 className="truncate font-display text-lg font-semibold tracking-tight text-ink">
+            {getAdminPageTitle(pathname)}
+          </h1>
+        </header>
 
-  {/* Page content */}
-  <main className="flex-1 px-8 py-8">
-  <Outlet />
-  </main>
-
-  {/* Footer */}
-  <footer className="py-6 px-8 border-t border-slate-200">
-  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-  Terminal Status:{""}
-  <span className="text-emerald-500">Encrypted &amp; Secure</span>
-  </p>
-  </footer>
-  </div>
-  </div>
+        <main className="flex-1 pb-24">
+          <div className="mx-auto w-full max-w-5xl px-5 pt-8 sm:px-8 lg:pt-12">
+            <Outlet />
+          </div>
+        </main>
+      </div>
+    </div>
   );
 };
 

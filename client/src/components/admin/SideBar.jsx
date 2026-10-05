@@ -1,38 +1,19 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  LayoutDashboard,
-  Users,
-  Calendar,
-  Building2,
-  ClipboardCheck,
-} from "lucide-react";
+import useAuth from "../../hooks/useAuth";
 import AppSidebar from "../common/AppSidebar";
-
-const MENU_ITEMS = [
-  { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/admin/events", label: "Events", icon: Calendar },
-  { to: "/admin/users", label: "Users", icon: Users },
-  { to: "/admin/registrations", label: "Registrations", icon: ClipboardCheck },
-  { to: "/admin/clubs", label: "Clubs", icon: Building2 },
-  { to: "/admin/club/verification", label: "Verification", icon: ClipboardCheck },
-];
+import { ADMIN_NAV_ITEMS } from "./adminNav";
 
 const SideBar = () => {
-  const navigate = useNavigate();
-
-  const handleSignOut = () => {
-    localStorage.removeItem("authToken");
-    navigate("/login");
-  };
+  const { logout } = useAuth();
 
   return (
     <AppSidebar
       title="Core Admin"
       subtitle="Administration"
-      items={MENU_ITEMS}
+      logoSrc="/eventhub-logo.svg"
+      items={ADMIN_NAV_ITEMS}
       backLabel="Portal view"
-      onSignOut={handleSignOut}
+      onSignOut={logout}
     />
   );
 };
